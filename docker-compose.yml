@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres
+    restart: always
+    shm_size: 128mb
+    volumes:
+      - type: tmpfs
+        target: /dev/shm
+        tmpfs:
+          size: 134217728
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: my-secret-pw
+      POSTGRES_DB: db
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    depends_on:
+      - db

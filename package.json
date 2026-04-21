@@ -32,10 +32,13 @@
     "class-validator": "^0.14.1",
     "class-validator-extended": "^4.2.1",
     "dayjs": "^1.11.20",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
     "lodash": "^4.17.23",
     "mongoose": "^9.3.3",
     "nodemailer": "^8.0.4",
     "passport-jwt": "^4.0.1",
+    "pg": "^8.20.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
@@ -48,8 +51,10 @@
     "@types/node": "^25.5.0",
     "@types/nodemailer": "^6.4.17",
     "@types/passport-jwt": "^4.0.1",
+    "@types/pg": "^8.20.0",
     "@typescript-eslint/eslint-plugin": "^8.57.2",
     "@typescript-eslint/parser": "^8.57.2",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^9.1.2",
     "eslint-plugin-prettier": "^5.5.5",
@@ -58,6 +63,7 @@
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
 }
