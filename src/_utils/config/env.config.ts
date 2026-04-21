@@ -42,6 +42,17 @@ export class EnvironmentVariables {
 
   @IsBoolean()
   SMTP_PREVIEW: boolean = false;
+
+  @IsString()
+  @Optional()
+  INSTAGRAM_CLIENT_ID?: string;
+
+  @IsString()
+  @Optional()
+  INSTAGRAM_CLIENT_SECRET?: string;
+
+  @IsString()
+  INSTAGRAM_CALLBACK_URL: string = 'http://localhost:3001/api/v1/auth/instagram/callback';
 }
 
 export function validateEnv(config: Record<string, unknown>) {

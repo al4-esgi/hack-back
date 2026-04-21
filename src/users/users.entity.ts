@@ -9,10 +9,13 @@ export const timestamps = {
 
 export const user = pgTable('user', {
   id: serial().primaryKey(),
-  password: varchar().notNull(),
+  password: varchar(),
   email: varchar().notNull(),
   firstname: varchar().notNull(),
   lastname: varchar().notNull(),
+  instagramId: varchar(),
+  instagramAccessToken: varchar(),
+  instagramTokenExpires: timestamp(),
   ...timestamps,
 });
 

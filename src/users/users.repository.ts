@@ -5,6 +5,7 @@ import { EncryptionService } from 'src/encryption/encryption.service';
 import { DATABASE_CLIENT_TOKEN } from 'src/database/database.providers';
 import { schema } from 'src/database/database.schema';
 import { DatabaseService } from 'src/database/database.service';
+import { eq } from 'drizzle-orm';
 
 @Injectable()
 export class UsersRepository {
@@ -60,6 +61,44 @@ export class UsersRepository {
       lastname: createUserDto.lastname,
       password: hashPassword,
     }).returning()
+  }
+
+  async findByInstagramId(instagramId: string) {
+    const users = await this.databaseService.db
+      .select()
+      .from(schema.user)
+      .where(eq(schema.user.instagramId, instagramId))
+      .limit(1);
+
+    return users[0] || null;
+  }
+
+  async createInstagramUser(profile: any, accessToken: string, refreshToken: string) {
+    return this.databaseService.db
+      .insert(schema.user)
+      .values({
+        email: `${profile.username}@instagram.user`,
+        firstname: profile.username,
+        lastname: '',
+        instagramId: profile.id,
+        instagramAccessToken: accessToken,
+        instagramTokenExpires: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+      })
+      .returning()
+      .then((users) => users[0]);
+  }
+
+  async updateInstagramTokens(userId: number, accessToken: string, refreshToken: string) {
+    const users = await this.databaseService.db
+      .update(schema.user)
+      .set({
+        instagramAccessToken: accessToken,
+        instagramTokenExpires: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+      })
+      .where(eq(schema.user.id, userId))
+      .returning();
+
+    return users[0];
   }
 
   // deleteUser = (userToDelete: UserDocument) =>
