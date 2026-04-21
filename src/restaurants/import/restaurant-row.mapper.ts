@@ -4,7 +4,7 @@ export type RestaurantRowMapped = {
   name: string;
   address: string;
   location: { city: string; country: string };
-  price: { rawLabel: string; symbol: string; symbolCount: number; currencyCode: string };
+  rankPrice: number;
   cuisines: string[];
   longitude: string;
   latitude: string;
@@ -24,7 +24,7 @@ export const mapRestaurantRow = (row: Record<string, string>): RestaurantRowMapp
     name: normalizeLabel(row.Name),
     address: normalizeLabel(row.Address),
     location: normalizeLocation(row.Location),
-    price: normalizePrice(row.Price),
+    rankPrice: normalizePrice(row.Price),
     cuisines,
     longitude: normalizeLabel(row.Longitude),
     latitude: normalizeLabel(row.Latitude),

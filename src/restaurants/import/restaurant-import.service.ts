@@ -8,14 +8,11 @@ import {
   cities,
   countries,
   cuisines,
-  currencies,
   facilities,
   ingestionLogs,
-  priceLevels,
   restaurantAwards,
   restaurantCuisines,
   restaurantFacilities,
-  restaurantPrices,
   restaurants,
 } from 'src/restaurants/entities';
 import { readCsvAsObjects } from './csv-reader';
@@ -43,8 +40,6 @@ export class RestaurantImportService {
   private readonly cuisineCache = new Map<string, { id: number; name: string }>();
   private readonly facilityCache = new Map<string, number>();
   private readonly awardTypeCache = new Map<string, number>();
-  private readonly currencyCache = new Map<string, number>();
-  private readonly priceLevelCache = new Map<string, number>();
 
   getFileHash = async (filePath: string): Promise<string> => {
     const content = await readFile(filePath);
@@ -79,13 +74,6 @@ export class RestaurantImportService {
           const mapped = mapRestaurantRow(row);
           const countryId = await this.ensureCountry(mapped.location.country, tx);
           const cityId = await this.ensureCity(mapped.location.city, countryId, tx);
-          const currencyId = await this.ensureCurrency(mapped.price.currencyCode, mapped.price.symbol, tx);
-          const priceLevelId = await this.ensurePriceLevel(
-            mapped.price.rawLabel,
-            mapped.price.symbolCount,
-            currencyId,
-            tx,
-          );
           const awardTypeId = await this.ensureAwardType(mapped.award.code, tx);
           const restaurantId = await this.upsertRestaurant(
             {
@@ -98,6 +86,7 @@ export class RestaurantImportService {
               sourceUrl: mapped.sourceUrl,
               websiteUrl: mapped.websiteUrl,
               description: mapped.description,
+              priceLevel: mapped.rankPrice,
             },
             tx,
           );
@@ -106,13 +95,22 @@ export class RestaurantImportService {
             {
               restaurantId,
               awardTypeId,
-              awardCode: mapped.award.code,
               starsCount: mapped.award.starsCount,
-              greenStar: mapped.greenStar,
             },
             tx,
           );
-          await this.replaceRestaurantPrice({ restaurantId, priceLevelId }, tx);
+
+          if (mapped.greenStar) {
+            const greenStarAwardTypeId = await this.ensureAwardType('GREEN_STAR', tx);
+            await this.replaceRestaurantAward(
+              {
+                restaurantId,
+                awardTypeId: greenStarAwardTypeId,
+                starsCount: null,
+              },
+              tx,
+            );
+          }
 
           const cuisineIds: number[] = [];
           for (const cuisineName of mapped.cuisines) {
@@ -259,37 +257,6 @@ export class RestaurantImportService {
     return saved.id;
   };
 
-  private ensureCurrency = async (currencyCode: string, symbol: string, tx: typeof this.databaseService.db): Promise<number> => {
-    const key = normalizeKey(currencyCode);
-    const cachedId = this.currencyCache.get(key);
-    if (cachedId) return cachedId;
-    const [saved] = await tx
-      .insert(currencies)
-      .values({ code: currencyCode, symbol })
-      .onConflictDoUpdate({ target: currencies.code, set: { symbol, updatedAt: new Date() } })
-      .returning({ id: currencies.id });
-    this.currencyCache.set(key, saved.id);
-    return saved.id;
-  };
-
-  private ensurePriceLevel = async (
-    rawLabel: string,
-    symbolCount: number,
-    currencyId: number,
-    tx: typeof this.databaseService.db,
-  ): Promise<number> => {
-    const key = normalizeKey(rawLabel);
-    const cachedId = this.priceLevelCache.get(key);
-    if (cachedId) return cachedId;
-    const [saved] = await tx
-      .insert(priceLevels)
-      .values({ rawLabel, symbolCount, currencyId })
-      .onConflictDoUpdate({ target: priceLevels.rawLabel, set: { symbolCount, currencyId, updatedAt: new Date() } })
-      .returning({ id: priceLevels.id });
-    this.priceLevelCache.set(key, saved.id);
-    return saved.id;
-  };
-
   private ensureAwardType = async (awardCode: string, tx: typeof this.databaseService.db): Promise<number> => {
     const key = normalizeKey(awardCode);
     const cachedId = this.awardTypeCache.get(key);
@@ -304,7 +271,7 @@ export class RestaurantImportService {
   };
 
   private ensureAwardTypes = async (): Promise<void> => {
-    for (const code of ['MICHELIN_STAR', 'BIB_GOURMAND', 'SELECTED']) {
+    for (const code of ['MICHELIN_STAR', 'BIB_GOURMAND', 'SELECTED', 'GREEN_STAR']) {
       await this.ensureAwardType(code, this.databaseService.db);
     }
   };
@@ -320,6 +287,7 @@ export class RestaurantImportService {
       sourceUrl: string;
       websiteUrl: string | null;
       description: string;
+      priceLevel: number;
     },
     tx: typeof this.databaseService.db,
   ): Promise<number> => {
@@ -337,6 +305,7 @@ export class RestaurantImportService {
           phoneNumber: row.phoneNumber,
           websiteUrl: row.websiteUrl,
           description: row.description,
+          priceLevel: row.priceLevel,
           updatedAt: new Date(),
         },
       })
@@ -345,19 +314,11 @@ export class RestaurantImportService {
   };
 
   private replaceRestaurantAward = async (
-    row: { restaurantId: number; awardTypeId: number; awardCode: string; starsCount: number | null; greenStar: boolean },
+    row: { restaurantId: number; awardTypeId: number; starsCount: number | null },
     tx: typeof this.databaseService.db,
   ): Promise<void> => {
     await tx.delete(restaurantAwards).where(eq(restaurantAwards.restaurantId, row.restaurantId));
     await tx.insert(restaurantAwards).values(row);
-  };
-
-  private replaceRestaurantPrice = async (
-    row: { restaurantId: number; priceLevelId: number },
-    tx: typeof this.databaseService.db,
-  ): Promise<void> => {
-    await tx.delete(restaurantPrices).where(eq(restaurantPrices.restaurantId, row.restaurantId));
-    await tx.insert(restaurantPrices).values(row);
   };
 }
 

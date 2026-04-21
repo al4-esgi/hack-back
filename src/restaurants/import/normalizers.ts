@@ -3,7 +3,6 @@ export type AwardNormalized = {
   starsCount: 1 | 2 | 3 | null;
 };
 
-export type PriceNormalized = { rawLabel: string; symbol: string; symbolCount: number; currencyCode: string };
 export type LocationNormalized = { city: string; country: string };
 
 export const normalizeLabel = (value: string): string => value.trim().replace(/\s+/g, ' ');
@@ -43,15 +42,10 @@ const symbolToCurrencyCode: Record<string, string> = {
   '﷼': 'SAR',
 };
 
-export const normalizePrice = (priceRaw: string): PriceNormalized => {
+export const normalizePrice = (priceRaw: string): number => {
   const rawLabel = normalizeLabel(priceRaw);
   const symbol = [...rawLabel][0];
   if (!symbol) throw new Error('Price value is empty');
-  return {
-    rawLabel,
-    symbol,
-    symbolCount: [...rawLabel].length,
-    currencyCode: symbolToCurrencyCode[symbol] ?? 'UNKNOWN',
-  };
+  return [...rawLabel].length;
 };
 

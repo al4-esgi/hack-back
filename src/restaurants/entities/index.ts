@@ -7,8 +7,5 @@ export { facilities } from './facilities.entity';
 export { restaurantFacilities } from './restaurant-facilities.entity';
 export { awardTypes } from './award-types.entity';
 export { restaurantAwards } from './restaurant-awards.entity';
-export { currencies } from './currencies.entity';
-export { priceLevels } from './price-levels.entity';
-export { restaurantPrices } from './restaurant-prices.entity';
 export { ingestionLogs } from './ingestion-logs.entity';
 

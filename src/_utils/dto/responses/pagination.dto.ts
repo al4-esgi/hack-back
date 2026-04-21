@@ -1,11 +1,7 @@
 import { PaginatedQueryDto } from '../requests/paginated-query.dto';
+import { PaginationMetaDto } from './pagination-meta.dto';
 
-export class PaginationMetaDto {
-  currentPage: number;
-  totalItemsCount: number;
-  totalPagesCount: number;
-  itemsPerPage: number;
-}
+export { PaginationMetaDto } from './pagination-meta.dto';
 
 export class PaginationDto {
   meta: PaginationMetaDto;

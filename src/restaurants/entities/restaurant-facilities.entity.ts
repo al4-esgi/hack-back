@@ -1,4 +1,4 @@
-import { integer, pgTable, primaryKey, timestamp } from 'drizzle-orm/pg-core';
+import { index, integer, pgTable, primaryKey, timestamp } from 'drizzle-orm/pg-core';
 import { facilities } from './facilities.entity';
 import { restaurants } from './restaurants.entity';
 
@@ -13,6 +13,9 @@ export const restaurantFacilities = pgTable(
       .references(() => facilities.id, { onDelete: 'restrict', onUpdate: 'cascade' }),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
-  table => [primaryKey({ columns: [table.restaurantId, table.facilityId] })],
+  table => [
+    primaryKey({ columns: [table.restaurantId, table.facilityId] }),
+    index('restaurant_facilities_facility_id_idx').on(table.facilityId),
+  ],
 );
 

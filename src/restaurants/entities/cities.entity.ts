@@ -10,7 +10,6 @@ export const cities = pgTable(
       .notNull()
       .references(() => countries.id, { onDelete: 'restrict', onUpdate: 'cascade' }),
     name: varchar('name', { length: 120 }).notNull(),
-    region: varchar('region', { length: 120 }),
     ...timestamps,
   },
   table => [unique('cities_country_id_name_unique').on(table.countryId, table.name)],
