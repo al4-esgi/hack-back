@@ -1,5 +1,5 @@
 import { GetUserDto } from './_utils/dto/response/get-user.dto';
-import { UserDocument } from './users.schema';
+import { UserDocument } from './users.entity';
 import { Injectable } from '@nestjs/common';
 import { PaginatedQueryDto } from '../_utils/dto/requests/paginated-query.dto';
 import { GetUserLightDto } from './_utils/dto/response/get-user-light.dto';

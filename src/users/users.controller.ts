@@ -2,7 +2,7 @@ import { Controller, Delete, Get, HttpCode, Param, Query } from '@nestjs/common'
 import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { Protect } from '../auth/_utils/decorator/protect.decorator';
-import { User, UserDocument } from './users.schema';
+import { User, UserDocument } from './users.entity';
 import { getDocumentByIdPipe } from 'src/_utils/get-document-by-id.pipe';
 import { UserByIdPipe } from './_utils/user-by-id.pipe';
 import { UserRoleEnum } from './_utils/user-role.enum';

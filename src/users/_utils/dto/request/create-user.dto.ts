@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsEnum, IsString } from 'class-validator';
 import { IsUnique } from 'src/_utils/decorators/unique-exists.decorator';
-import { User } from 'src/users/users.schema';
+import { User } from 'src/users/users.entity';
 import StrongPasswordDecorator from '../../../../_utils/decorators/strong-password.decorator';
 import { UserRoleEnum } from '../../user-role.enum';
 

@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from './_utils/dto/request/login.dto';
 
 import { UsersRepository } from 'src/users/users.repository';
-import { UserDocument } from 'src/users/users.schema';
+import { UserDocument } from 'src/users/users.entity';
 import { UsersService } from 'src/users/users.service';
 import { EncryptionService } from '../encryption/encryption.service';
 import { NodemailerService } from '../nodemailer/nodemailer.service';

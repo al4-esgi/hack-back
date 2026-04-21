@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from './_utils/dto/request/create-user.dto';
 import { UsersMapper } from './users.mapper';
 import { UsersRepository } from './users.repository';
-import { UserDocument } from './users.schema';
+import { UserDocument } from './users.entity';
 import { UserPaginatedQueryDto } from './_utils/dto/request/user-paginated-query.dto';
 
 @Injectable()

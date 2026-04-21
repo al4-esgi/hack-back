@@ -2,7 +2,7 @@ import { ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 import { UserRoleEnum } from '../../users/_utils/user-role.enum';
-import { UserDocument } from '../../users/users.schema';
+import { UserDocument } from '../../users/users.entity';
 import { ROLES_KEY } from '../_utils/decorator/protect.decorator';
 
 @Injectable()
