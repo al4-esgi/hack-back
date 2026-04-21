@@ -6,11 +6,11 @@ import { ConfigService } from '@nestjs/config';
 
 export const DATABASE_CLIENT_TOKEN = 'DATABASE_CLIENT_TOKEN';
 
-export const DrizzleProvider: Provider = {
+export const databaseProviders: Provider[] =  [{
   provide: DATABASE_CLIENT_TOKEN,
   inject: [ConfigService],
   useFactory(configService: ConfigService) {
     const pool = new Pool({ connectionString: configService.get("DATABASE_URL") });
     return drizzle(pool, { schema, logger: true }) as NodePgDatabase<Schema>;
   },
-};
+}]

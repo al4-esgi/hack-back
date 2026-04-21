@@ -1,10 +1,10 @@
 import { Global, Module } from '@nestjs/common';
-import { DrizzleProvider } from './database.providers';
-import { DrizzleService } from './database.service';
+import { databaseProviders } from './database.providers';
+import { DatabaseService } from './database.service';
 
 @Global()
 @Module({
-  providers: [DrizzleService, DrizzleProvider],
-  exports: [DrizzleService],
+  providers: [DatabaseService, ...databaseProviders],
+  exports: [DatabaseService],
 })
 export class DatabaseModule {}

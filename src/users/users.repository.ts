@@ -1,21 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types, QueryFilter } from 'mongoose';
 import { CreateUserDto } from './_utils/dto/request/create-user.dto';
-import { randomStringGenerator } from '@nestjs/common/utils/random-string-generator.util';
-import dayjs from 'dayjs';
-import { UserPaginatedQueryDto } from './_utils/dto/request/user-paginated-query.dto';
-import { isNil } from 'lodash';
 import { EncryptionService } from 'src/encryption/encryption.service';
 import { DATABASE_CLIENT_TOKEN } from 'src/database/database.providers';
 import { schema } from 'src/database/database.schema';
+import { DatabaseService } from 'src/database/database.service';
 
 @Injectable()
 export class UsersRepository {
   private readonly orFailNotFound = new NotFoundException('User not found');
 
   constructor(
-    @InjectModel(DATABASE_CLIENT_TOKEN) private databaseService: databaseService,
+    private readonly  databaseService: DatabaseService,
     private readonly encryptionService: EncryptionService,
   ) {}
 
@@ -63,7 +59,6 @@ export class UsersRepository {
       firstname: createUserDto.firstname,
       lastname: createUserDto.lastname,
       password: hashPassword,
-      role: createUserDto.role,
     }).returning()
   }
 

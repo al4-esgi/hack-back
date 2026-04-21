@@ -9,8 +9,10 @@ export const timestamps = {
 
 export const user = pgTable('user', {
   id: serial().primaryKey(),
-  username: varchar().notNull().unique(),
   password: varchar().notNull(),
+  email: varchar().notNull(),
+  firstname: varchar().notNull(),
+  lastname: varchar().notNull(),
   ...timestamps,
 });
 

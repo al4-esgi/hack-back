@@ -15,7 +15,7 @@ import { DatabaseModule } from 'src/database/database.module';
     forwardRef(() => JwtModule),
     EncryptionModule,
   ],
-  providers: [UsersService, UsersRepository, UsersMapper, UserExistsRule, UniqueExistsConstraint],
+  providers: [UsersService, UsersRepository, UsersMapper, UserExistsRule],
   controllers: [UsersController],
   exports: [UsersService, UsersRepository],
 })
