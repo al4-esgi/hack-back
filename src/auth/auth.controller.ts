@@ -44,4 +44,17 @@ export class AuthController {
       );
     }
   }
+
+  @Get("callback")
+  @ApiOperation({
+    summary: "Redirect callback to mobile deep link preserving query params",
+  })
+  async callbackRedirect(@Req() req: Request, @Res() res: Response) {
+    const mobileOauthRedirectUrl = this.configService.get("MOBILE_REDIRECT_URI");
+    const redirectPathWithQuery = req.originalUrl
+      .replace(/^\/api\/v1\//, "")
+      .replace(/^\//, "");
+
+    res.redirect(`${mobileOauthRedirectUrl}://${redirectPathWithQuery}`);
+  }
 }
