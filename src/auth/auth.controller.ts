@@ -39,6 +39,6 @@ export class AuthController {
     const jwt = this.authService.generateJwt(user);
 
     const frontUrl = this.configService.get("FRONT_URL");
-    res.redirect(`${frontUrl}/auth/callback?token=${jwt}`);
+    res.redirect(`${frontUrl}/auth/callback#token=${encodeURIComponent(jwt)}`);
   }
 }
