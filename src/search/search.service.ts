@@ -267,45 +267,9 @@ export class SearchService {
 
     const whereExpr = whereClauses.length > 0 ? and(...whereClauses) : sql`true`;
 
-    const cuisinesAgg = sql`coalesce((
-      SELECT array_agg(${cuisines.name} ORDER BY ${cuisines.name})
-      FROM ${restaurantCuisines}
-      INNER JOIN ${cuisines} ON ${cuisines.id} = ${restaurantCuisines.cuisineId}
-      WHERE ${restaurantCuisines.restaurantId} = ${restaurants.id}
-    ), ARRAY[]::text[])`;
-
-    const facilitiesAgg = sql`coalesce((
-      SELECT array_agg(${facilities.name} ORDER BY ${facilities.name})
-      FROM ${restaurantFacilities}
-      INNER JOIN ${facilities} ON ${facilities.id} = ${restaurantFacilities.facilityId}
-      WHERE ${restaurantFacilities.restaurantId} = ${restaurants.id}
-    ), ARRAY[]::text[])`;
-
-    const awardCodeSub = sql`(
-      SELECT ${awardTypes.code}
-      FROM ${restaurantAwards}
-      INNER JOIN ${awardTypes} ON ${awardTypes.id} = ${restaurantAwards.awardTypeId}
-      WHERE ${restaurantAwards.restaurantId} = ${restaurants.id}
-      ORDER BY CASE WHEN ${awardTypes.code} = ${GREEN_STAR_CODE} THEN 1 ELSE 0 END, ${awardTypes.code}
-      LIMIT 1
-    )`;
-
-    const greenStarSub = sql`coalesce((
-      SELECT BOOL_OR(${awardTypes.code} = ${GREEN_STAR_CODE})
-      FROM ${restaurantAwards}
-      INNER JOIN ${awardTypes} ON ${awardTypes.id} = ${restaurantAwards.awardTypeId}
-      WHERE ${restaurantAwards.restaurantId} = ${restaurants.id}
-    ), false)`;
-
     const distanceExpr = query.hasGeo
       ? sql`ST_Distance(${restaurants.location}, ST_SetSRID(ST_MakePoint(${query.lng}, ${query.lat}), 4326)::geography)`
       : sql`NULL::float8`;
-
-    const starsSortExpr = sql`(
-      SELECT MAX(${restaurantAwards.starsCount})
-      FROM ${restaurantAwards}
-      WHERE ${restaurantAwards.restaurantId} = ${restaurants.id}
-    )`;
 
     return sql`
       SELECT
@@ -319,23 +283,44 @@ export class SearchService {
         ${countries.name} AS country,
         ${restaurants.createdAt} AS created_at,
         ${distanceExpr} AS distance_meters,
-        ${starsSortExpr} AS stars_sort,
+        agg_awards.stars_sort AS stars_sort,
         NULL::jsonb AS hotel_details,
         jsonb_build_object(
           'description', ${restaurants.description},
           'sourceUrl', ${restaurants.sourceUrl},
           'websiteUrl', ${restaurants.websiteUrl},
           'phoneNumber', ${restaurants.phoneNumber},
-          'awardCode', ${awardCodeSub},
-          'stars', ${starsSortExpr},
-          'hasGreenStar', ${greenStarSub},
-          'cuisines', ${cuisinesAgg},
-          'facilities', ${facilitiesAgg},
+          'awardCode', agg_awards.award_code,
+          'stars', agg_awards.stars_sort,
+          'hasGreenStar', agg_awards.has_green_star,
+          'cuisines', coalesce(agg_cuisines.cuisines, ARRAY[]::text[]),
+          'facilities', coalesce(agg_facilities.facilities, ARRAY[]::text[]),
           'priceLevel', ${restaurants.priceLevel}
         ) AS restaurant_details
       FROM ${restaurants}
       INNER JOIN ${cities} ON ${cities.id} = ${restaurants.cityId}
       INNER JOIN ${countries} ON ${countries.id} = ${cities.countryId}
+      LEFT JOIN LATERAL (
+        SELECT
+          MAX(${restaurantAwards.starsCount}) AS stars_sort,
+          BOOL_OR(${awardTypes.code} = ${GREEN_STAR_CODE}) AS has_green_star,
+          MIN(CASE WHEN ${awardTypes.code} <> ${GREEN_STAR_CODE} THEN ${awardTypes.code} END) AS award_code
+        FROM ${restaurantAwards}
+        INNER JOIN ${awardTypes} ON ${awardTypes.id} = ${restaurantAwards.awardTypeId}
+        WHERE ${restaurantAwards.restaurantId} = ${restaurants.id}
+      ) agg_awards ON true
+      LEFT JOIN LATERAL (
+        SELECT array_agg(${cuisines.name} ORDER BY ${cuisines.name}) AS cuisines
+        FROM ${restaurantCuisines}
+        INNER JOIN ${cuisines} ON ${cuisines.id} = ${restaurantCuisines.cuisineId}
+        WHERE ${restaurantCuisines.restaurantId} = ${restaurants.id}
+      ) agg_cuisines ON true
+      LEFT JOIN LATERAL (
+        SELECT array_agg(${facilities.name} ORDER BY ${facilities.name}) AS facilities
+        FROM ${restaurantFacilities}
+        INNER JOIN ${facilities} ON ${facilities.id} = ${restaurantFacilities.facilityId}
+        WHERE ${restaurantFacilities.restaurantId} = ${restaurants.id}
+      ) agg_facilities ON true
       WHERE ${whereExpr}
     `;
   }
@@ -357,10 +342,12 @@ export class SearchService {
         return sql`ORDER BY created_at ${dir}${tieBreak}`;
 
       case UnifiedSearchSortBy.STARS:
+        // Hotels always have NULL stars_sort → they must land after restaurants.
+        // "restaurant" > "hotel" alphabetically, so type DESC puts restaurants first for tied NULLs.
         if (query.sortDirection === SortDirection.ASC) {
-          return sql`ORDER BY stars_sort ASC NULLS LAST${tieBreak}`;
+          return sql`ORDER BY stars_sort ASC NULLS LAST, type DESC, id ASC`;
         }
-        return sql`ORDER BY stars_sort DESC NULLS LAST${tieBreak}`;
+        return sql`ORDER BY stars_sort DESC NULLS LAST, type DESC, id ASC`;
 
       case UnifiedSearchSortBy.NAME:
       default:

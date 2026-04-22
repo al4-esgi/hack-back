@@ -60,8 +60,16 @@ export class BootstrapService implements OnApplicationBootstrap {
       if (hotelCount || restaurantCount) {
         this.logger.log(`Geo backfill: ${hotelCount} hotels, ${restaurantCount} restaurants updated.`);
       }
-    } catch {
-      this.logger.warn('Geo backfill skipped (location column may not exist yet — run db:push).');
+    } catch (error) {
+      const err = error as { cause?: { code?: string; message?: string }; code?: string; message?: string };
+      const code = err?.cause?.code ?? err?.code;
+      const msg = err?.cause?.message ?? err?.message ?? '';
+      const ignorable =
+        ['42P01', '42703', '42883', '42704'].includes(code ?? '') ||
+        msg.includes('does not exist');
+      if (!ignorable) throw error;
+      this.logger.warn('Geo backfill skipped (location column/table or PostGIS not yet available — run db:push if needed).');
+      this.logger.debug(`Geo backfill skip reason: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
