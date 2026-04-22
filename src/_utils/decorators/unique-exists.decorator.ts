@@ -1,13 +1,13 @@
-import { Injectable } from '@nestjs/common';
-import { InjectConnection } from '@nestjs/mongoose';
+import { Injectable } from "@nestjs/common";
+import { InjectConnection } from "@nestjs/mongoose";
 import {
   registerDecorator,
   ValidationArguments,
   ValidatorConstraint,
   ValidatorConstraintInterface,
-} from 'class-validator';
-import { Connection, isValidObjectId } from 'mongoose';
-import { UniqueExistsValidationOptions } from './options/unique-exists.options';
+} from "class-validator";
+import { Connection, isValidObjectId } from "mongoose";
+import { UniqueExistsValidationOptions } from "./options/unique-exists.options";
 
 @ValidatorConstraint({ async: true })
 @Injectable()
@@ -18,10 +18,17 @@ export class UniqueExistsConstraint implements ValidatorConstraintInterface {
     const [entity, validationOptions, property, flag] = args.constraints;
     const options: UniqueExistsValidationOptions<T> = validationOptions || {};
 
-    if ((options.property === '_id' || property === '_id') && !isValidObjectId(value)) return false;
+    if (
+      (options.property === "_id" || property === "_id") &&
+      !isValidObjectId(value)
+    )
+      return false;
 
     const repository = this.connection.model(entity);
-    const query: Record<string, any> = { [options.property || property]: value, ...options.queries };
+    const query: Record<string, any> = {
+      [options.property || property]: value,
+      ...options.queries,
+    };
     if (options.excludeDeleted) query.deletedAt = null;
 
     const result = await repository.findOne(query).exec();
@@ -30,16 +37,22 @@ export class UniqueExistsConstraint implements ValidatorConstraintInterface {
   }
 
   defaultMessage(args: ValidationArguments) {
-    if (args.constraints[1]?.property?.includes('id') ?? (args.property.includes('id') && !isValidObjectId(args.value)))
+    if (
+      args.constraints[1]?.property?.includes("id") ??
+      (args.property.includes("id") && !isValidObjectId(args.value))
+    )
       return `${args.constraints[1].property ?? args.property} '${args.value}' is not a valid ObjectId`;
-    return `${args.property} '${args.value}' ${args.constraints[3] ? 'does not exist' : 'already exists'}`;
+    return `${args.property} '${args.value}' ${args.constraints[3] ? "does not exist" : "already exists"}`;
   }
 }
 
-export function IsUnique<T>(entity: ClassType<T>, validationOptions?: UniqueExistsValidationOptions<T>) {
+export function IsUnique<T>(
+  entity: ClassType<T>,
+  validationOptions?: UniqueExistsValidationOptions<T>,
+) {
   return (object: any, propertyName: string) => {
     registerDecorator({
-      name: 'isUnique',
+      name: "isUnique",
       target: object.constructor,
       propertyName,
       options: validationOptions,
@@ -49,10 +62,13 @@ export function IsUnique<T>(entity: ClassType<T>, validationOptions?: UniqueExis
   };
 }
 
-export function IsExisting<T>(entity: ClassType<T>, validationOptions?: UniqueExistsValidationOptions<T>) {
+export function IsExisting<T>(
+  entity: ClassType<T>,
+  validationOptions?: UniqueExistsValidationOptions<T>,
+) {
   return (object: any, propertyName: string) => {
     registerDecorator({
-      name: 'isExisting',
+      name: "isExisting",
       target: object.constructor,
       propertyName,
       options: validationOptions,

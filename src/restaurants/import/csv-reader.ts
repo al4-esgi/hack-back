@@ -1,11 +1,11 @@
-import { createReadStream } from 'fs';
-import readline from 'readline';
+import { createReadStream } from "fs";
+import readline from "readline";
 
-const BOM = '\uFEFF';
+const BOM = "\uFEFF";
 
 const parseCsvLine = (line: string): string[] => {
   const values: string[] = [];
-  let current = '';
+  let current = "";
   let inQuotes = false;
 
   for (let i = 0; i < line.length; i += 1) {
@@ -20,9 +20,9 @@ const parseCsvLine = (line: string): string[] => {
       inQuotes = !inQuotes;
       continue;
     }
-    if (char === ',' && !inQuotes) {
+    if (char === "," && !inQuotes) {
       values.push(current);
-      current = '';
+      current = "";
       continue;
     }
     current += char;
@@ -31,13 +31,16 @@ const parseCsvLine = (line: string): string[] => {
   return values;
 };
 
-const stripTrailingCr = (value: string): string => (value.endsWith('\r') ? value.slice(0, -1) : value);
+const stripTrailingCr = (value: string): string =>
+  value.endsWith("\r") ? value.slice(0, -1) : value;
 
-export const readCsvAsObjects = async (filePath: string): Promise<Record<string, string>[]> => {
-  const stream = createReadStream(filePath, { encoding: 'utf-8' });
+export const readCsvAsObjects = async (
+  filePath: string,
+): Promise<Record<string, string>[]> => {
+  const stream = createReadStream(filePath, { encoding: "utf-8" });
   const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
   const rows: string[][] = [];
-  let pending = '';
+  let pending = "";
   let quoteCount = 0;
   let isFirstLine = true;
 
@@ -53,17 +56,17 @@ export const readCsvAsObjects = async (filePath: string): Promise<Record<string,
     quoteCount += (line.match(/"/g) || []).length;
     if (quoteCount % 2 !== 0) continue;
     rows.push(parseCsvLine(pending));
-    pending = '';
+    pending = "";
     quoteCount = 0;
   }
   if (pending) rows.push(parseCsvLine(pending));
   if (!rows.length) return [];
 
   const [headers, ...dataRows] = rows;
-  return dataRows.map(row => {
+  return dataRows.map((row) => {
     const obj: Record<string, string> = {};
     headers.forEach((header, idx) => {
-      obj[header] = (row[idx] ?? '').trim();
+      obj[header] = (row[idx] ?? "").trim();
     });
     return obj;
   });

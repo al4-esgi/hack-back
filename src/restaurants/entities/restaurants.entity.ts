@@ -5,12 +5,12 @@ import { cities } from './cities.entity';
 import { timestamps } from './_shared';
 
 export const restaurants = pgTable(
-  'restaurants',
+  "restaurants",
   {
-    id: serial('id').primaryKey(),
-    name: varchar('name', { length: 255 }).notNull(),
-    address: text('address').notNull(),
-    cityId: integer('city_id')
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(),
+    address: text("address").notNull(),
+    cityId: integer("city_id")
       .notNull()
       .references(() => cities.id, { onDelete: 'restrict', onUpdate: 'cascade' }),
     latitude: numeric('latitude', { precision: 9, scale: 6 }).notNull(),
@@ -33,4 +33,3 @@ export const restaurants = pgTable(
     index('restaurants_location_gist_idx').using('gist', table.location),
   ],
 );
-

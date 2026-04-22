@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { createHash } from 'crypto';
-import { readFile } from 'fs/promises';
-import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
-import { DatabaseService } from 'src/database/database.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { createHash } from "crypto";
+import { readFile } from "fs/promises";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { DatabaseService } from "src/database/database.service";
 import {
   awardTypes,
   cities,
@@ -13,12 +13,16 @@ import {
   restaurantAwards,
   restaurantCuisines,
   restaurantFacilities,
+  restaurantImages,
   restaurants,
-} from 'src/restaurants/entities';
-import { AWARD_CODES, GREEN_STAR_CODE } from 'src/restaurants/_constants';
-import { readCsvAsObjects } from './csv-reader';
-import { mapRestaurantRow, type RestaurantRowMapped } from './restaurant-row.mapper';
-import { normalizeKey, normalizeLabel } from './normalizers';
+} from "src/restaurants/entities";
+import { AWARD_CODES, GREEN_STAR_CODE } from "src/restaurants/_constants";
+import { readCsvAsObjects } from "./csv-reader";
+import {
+  mapRestaurantRow,
+  type RestaurantRowMapped,
+} from "./restaurant-row.mapper";
+import { normalizeKey, normalizeLabel } from "./normalizers";
 
 type ImportOptions = {
   strictCuisine: boolean;
@@ -52,23 +56,34 @@ export class RestaurantImportService {
 
   getFileHash = async (filePath: string): Promise<string> => {
     const content = await readFile(filePath);
-    return createHash('sha256').update(content).digest('hex');
+    return createHash("sha256").update(content).digest("hex");
   };
 
-  hasSuccessfulImport = async (sourceName: string, sourceHash: string): Promise<boolean> => {
+  hasSuccessfulImport = async (
+    sourceName: string,
+    sourceHash: string,
+  ): Promise<boolean> => {
     const latest = await this.databaseService.db
       .select()
       .from(ingestionLogs)
-      .where(and(eq(ingestionLogs.sourceName, sourceName), eq(ingestionLogs.sourceHash, sourceHash)))
+      .where(
+        and(
+          eq(ingestionLogs.sourceName, sourceName),
+          eq(ingestionLogs.sourceHash, sourceHash),
+        ),
+      )
       .orderBy(desc(ingestionLogs.importedAt))
       .limit(1);
 
-    return latest[0]?.status === 'SUCCESS';
+    return latest[0]?.status === "SUCCESS";
   };
 
-  runImport = async (csvPath: string, options: ImportOptions): Promise<ImportStats> => {
+  runImport = async (
+    csvPath: string,
+    options: ImportOptions,
+  ): Promise<ImportStats> => {
     const rows = await readCsvAsObjects(csvPath);
-    const sourceName = csvPath.split('/').pop() ?? 'michelin_my_maps.csv';
+    const sourceName = csvPath.split("/").pop() ?? "michelin_my_maps.csv";
     const sourceHash = await this.getFileHash(csvPath);
 
     const stats: ImportStats = {
@@ -99,39 +114,53 @@ export class RestaurantImportService {
             return;
           }
           if (!mapped.location.country) {
-            pushWarning(`Row ${idx + 2}: skipped (missing country in "${row.Location ?? ''}")`);
+            pushWarning(
+              `Row ${idx + 2}: skipped (missing country in "${row.Location ?? ""}")`,
+            );
             stats.skipped += 1;
             return;
           }
           prepared.push({ mapped, index: idx });
         } catch (err) {
-          pushWarning(`Row ${idx + 2}: ${err instanceof Error ? err.message : String(err)}`);
+          pushWarning(
+            `Row ${idx + 2}: ${err instanceof Error ? err.message : String(err)}`,
+          );
           stats.skipped += 1;
         }
       });
 
-      await this.ensureCountriesBulk(prepared.map(p => p.mapped.location.country as string));
-      await this.ensureCitiesBulk(
-        prepared.map(p => ({ country: p.mapped.location.country as string, city: p.mapped.location.city })),
+      await this.ensureCountriesBulk(
+        prepared.map((p) => p.mapped.location.country as string),
       );
-      await this.ensureFacilitiesBulk(prepared.flatMap(p => p.mapped.facilities));
+      await this.ensureCitiesBulk(
+        prepared.map((p) => ({
+          country: p.mapped.location.country as string,
+          city: p.mapped.location.city,
+        })),
+      );
+      await this.ensureFacilitiesBulk(
+        prepared.flatMap((p) => p.mapped.facilities),
+      );
 
       const unknownCuisines = new Map<string, string>();
       prepared.forEach(({ mapped }) => {
-        mapped.cuisines.forEach(cuisine => {
+        mapped.cuisines.forEach((cuisine) => {
           const key = normalizeKey(cuisine);
-          if (key && !this.cuisineCache.has(key)) unknownCuisines.set(key, cuisine);
+          if (key && !this.cuisineCache.has(key))
+            unknownCuisines.set(key, cuisine);
         });
       });
       if (unknownCuisines.size > 0) {
         if (options.strictCuisine) {
           throw new Error(
-            `Unknown cuisines encountered in strict mode: ${[...unknownCuisines.values()].join(', ')}`,
+            `Unknown cuisines encountered in strict mode: ${[...unknownCuisines.values()].join(", ")}`,
           );
         }
         await this.ensureCuisinesBulk([...unknownCuisines.values()]);
         stats.unknownCuisines = unknownCuisines.size;
-        unknownCuisines.forEach(name => pushWarning(`Unknown cuisine auto-created: ${name}`));
+        unknownCuisines.forEach((name) =>
+          pushWarning(`Unknown cuisine auto-created: ${name}`),
+        );
       }
 
       for (let start = 0; start < prepared.length; start += this.BATCH_SIZE) {
@@ -143,7 +172,9 @@ export class RestaurantImportService {
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           stats.skipped += batch.length;
-          pushWarning(`Batch starting row ${batch[0].index + 2} failed: ${message}`);
+          pushWarning(
+            `Batch starting row ${batch[0].index + 2} failed: ${message}`,
+          );
           this.logger.error(
             `Batch starting at row ${batch[0].index + 2} failed: ${message}`,
             err instanceof Error ? err.stack : undefined,
@@ -155,8 +186,8 @@ export class RestaurantImportService {
         sourceName,
         sourceHash,
         rowCount: stats.rowsRead,
-        status: 'SUCCESS',
-        message: warnings.length ? warnings.join(' | ') : null,
+        status: "SUCCESS",
+        message: warnings.length ? warnings.join(" | ") : null,
       });
       this.logger.log(
         `Restaurant import complete. rows=${stats.rowsRead} upserted=${stats.restaurantsUpserted} skipped=${stats.skipped} unknownCuisines=${stats.unknownCuisines}`,
@@ -167,27 +198,167 @@ export class RestaurantImportService {
         sourceName,
         sourceHash,
         rowCount: stats.rowsRead,
-        status: 'FAILED',
-        message: error instanceof Error ? error.message : 'Unknown import error',
+        status: "FAILED",
+        message:
+          error instanceof Error ? error.message : "Unknown import error",
       });
       throw error;
     }
+  };
+
+  hasSuccessfulImageImport = async (
+    sourceName: string,
+    sourceHash: string,
+  ): Promise<boolean> => {
+    const latest = await this.databaseService.db
+      .select()
+      .from(ingestionLogs)
+      .where(
+        and(
+          eq(ingestionLogs.sourceName, sourceName),
+          eq(ingestionLogs.sourceHash, sourceHash),
+        ),
+      )
+      .orderBy(desc(ingestionLogs.importedAt))
+      .limit(1);
+
+    return latest[0]?.status === "SUCCESS";
+  };
+
+  runImageImport = async (
+    csvPath: string,
+  ): Promise<{ rowsRead: number; imagesInserted: number; skipped: number }> => {
+    const rows = await readCsvAsObjects(csvPath);
+    const sourceName = csvPath.split("/").pop() ?? "restaurant_images.csv";
+    const sourceHash = await this.getFileHash(csvPath);
+
+    const stats = { rowsRead: rows.length, imagesInserted: 0, skipped: 0 };
+
+    try {
+      type ImageRow = { restaurantId: number; imageUrl: string };
+      const valid: ImageRow[] = [];
+
+      rows.forEach((row, idx) => {
+        const restaurantId = Number(row["restaurant_id"]);
+        const imageUrl = (row["image_url"] ?? "").trim();
+        if (!restaurantId || !imageUrl) {
+          this.logger.warn(`Image row ${idx + 2}: skipped (missing fields)`);
+          stats.skipped += 1;
+          return;
+        }
+        valid.push({ restaurantId, imageUrl });
+      });
+
+      for (let start = 0; start < valid.length; start += this.BATCH_SIZE) {
+        const batch = valid.slice(start, start + this.BATCH_SIZE);
+        try {
+          const inserted = await this.databaseService.db.transaction(
+            async (tx) => {
+              const result = await tx
+                .insert(restaurantImages)
+                .values(batch)
+                .onConflictDoNothing()
+                .returning({ id: restaurantImages.id });
+              return result.length;
+            },
+          );
+          stats.imagesInserted += inserted;
+          stats.skipped += batch.length - inserted;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          stats.skipped += batch.length;
+          this.logger.error(
+            `Image batch starting at row ${start + 2} failed: ${message}`,
+          );
+        }
+      }
+
+      await this.databaseService.db.insert(ingestionLogs).values({
+        sourceName,
+        sourceHash,
+        rowCount: stats.rowsRead,
+        status: "SUCCESS",
+        message: null,
+      });
+      this.logger.log(
+        `Import done. rows=${stats.rowsRead} inserted=${stats.imagesInserted} skipped=${stats.skipped}`,
+      );
+      return stats;
+    } catch (error) {
+      await this.databaseService.db.insert(ingestionLogs).values({
+        sourceName,
+        sourceHash,
+        rowCount: stats.rowsRead,
+        status: "FAILED",
+        message:
+          error instanceof Error ? error.message : "Unknown import error",
+      });
+      throw error;
+    }
+  };
+
+  assignRandomImagesToRestaurantsWithoutImages = async (): Promise<number> => {
+    this.logger.log("Assigning random images to restaurants without images...");
+
+    const db = this.databaseService.db;
+
+    const [restaurantsWithoutImages, allImages] = await Promise.all([
+      db
+        .select({ id: restaurants.id })
+        .from(restaurants)
+        .leftJoin(
+          restaurantImages,
+          eq(restaurants.id, restaurantImages.restaurantId),
+        )
+        .where(isNull(restaurantImages.id)),
+      db.select({ imageUrl: restaurantImages.imageUrl }).from(restaurantImages),
+    ]);
+
+    if (!allImages.length) {
+      this.logger.log("No images in pool — skipping random image assignment.");
+      return 0;
+    }
+
+    if (!restaurantsWithoutImages.length) {
+      this.logger.log("All restaurants already have images — skipping.");
+      return 0;
+    }
+
+    const imageUrls = allImages.map((r) => r.imageUrl);
+    const newRows = restaurantsWithoutImages.map(({ id }) => ({
+      restaurantId: id,
+      imageUrl: imageUrls[Math.floor(Math.random() * imageUrls.length)],
+    }));
+
+    for (let start = 0; start < newRows.length; start += this.BATCH_SIZE) {
+      const batch = newRows.slice(start, start + this.BATCH_SIZE);
+      await db.insert(restaurantImages).values(batch).onConflictDoNothing();
+    }
+
+    this.logger.log(`Assigned random images to ${newRows.length} restaurants`);
+    return newRows.length;
   };
 
   private persistBatch = async (batch: PreparedRow[]): Promise<number> => {
     if (!batch.length) return 0;
 
     const unique = new Map<string, PreparedRow>();
-    batch.forEach(row => unique.set(row.mapped.sourceUrl, row));
+    batch.forEach((row) => unique.set(row.mapped.sourceUrl, row));
     const uniqueBatch = [...unique.values()];
 
-    return this.databaseService.db.transaction(async tx => {
+    return this.databaseService.db.transaction(async (tx) => {
       const restaurantValues = uniqueBatch.map(({ mapped }) => {
         const countryKey = normalizeKey(mapped.location.country as string);
         const countryId = this.countryCache.get(countryKey);
-        if (!countryId) throw new Error(`Country not resolved: ${mapped.location.country}`);
-        const cityId = this.cityCache.get(`${countryId}:${normalizeKey(mapped.location.city)}`);
-        if (!cityId) throw new Error(`City not resolved: ${mapped.location.city} (country ${mapped.location.country})`);
+        if (!countryId)
+          throw new Error(`Country not resolved: ${mapped.location.country}`);
+        const cityId = this.cityCache.get(
+          `${countryId}:${normalizeKey(mapped.location.city)}`,
+        );
+        if (!cityId)
+          throw new Error(
+            `City not resolved: ${mapped.location.city} (country ${mapped.location.country})`,
+          );
         return {
           name: mapped.name,
           address: mapped.address,
@@ -222,10 +393,14 @@ export class RestaurantImportService {
         })
         .returning({ id: restaurants.id, sourceUrl: restaurants.sourceUrl });
 
-      const idBySourceUrl = new Map(saved.map(r => [r.sourceUrl, r.id]));
-      const batchIds = saved.map(r => r.id);
+      const idBySourceUrl = new Map(saved.map((r) => [r.sourceUrl, r.id]));
+      const batchIds = saved.map((r) => r.id);
 
-      const awardRows: { restaurantId: number; awardTypeId: number; starsCount: number | null }[] = [];
+      const awardRows: {
+        restaurantId: number;
+        awardTypeId: number;
+        starsCount: number | null;
+      }[] = [];
       const cuisineRows: { restaurantId: number; cuisineId: number }[] = [];
       const facilityRows: { restaurantId: number; facilityId: number }[] = [];
 
@@ -234,16 +409,26 @@ export class RestaurantImportService {
         if (!restaurantId) return;
 
         const mainAwardTypeId = this.awardTypeCache.get(mapped.award.code);
-        if (!mainAwardTypeId) throw new Error(`Award type not seeded: ${mapped.award.code}`);
-        awardRows.push({ restaurantId, awardTypeId: mainAwardTypeId, starsCount: mapped.award.starsCount });
+        if (!mainAwardTypeId)
+          throw new Error(`Award type not seeded: ${mapped.award.code}`);
+        awardRows.push({
+          restaurantId,
+          awardTypeId: mainAwardTypeId,
+          starsCount: mapped.award.starsCount,
+        });
         if (mapped.greenStar) {
           const greenStarTypeId = this.awardTypeCache.get(GREEN_STAR_CODE);
-          if (!greenStarTypeId) throw new Error('Green star award type not seeded');
-          awardRows.push({ restaurantId, awardTypeId: greenStarTypeId, starsCount: null });
+          if (!greenStarTypeId)
+            throw new Error("Green star award type not seeded");
+          awardRows.push({
+            restaurantId,
+            awardTypeId: greenStarTypeId,
+            starsCount: null,
+          });
         }
 
         const seenCuisineIds = new Set<number>();
-        mapped.cuisines.forEach(name => {
+        mapped.cuisines.forEach((name) => {
           const entry = this.cuisineCache.get(normalizeKey(name));
           if (entry && !seenCuisineIds.has(entry.id)) {
             seenCuisineIds.add(entry.id);
@@ -252,7 +437,7 @@ export class RestaurantImportService {
         });
 
         const seenFacilityIds = new Set<number>();
-        mapped.facilities.forEach(name => {
+        mapped.facilities.forEach((name) => {
           const facilityId = this.facilityCache.get(normalizeKey(name));
           if (facilityId && !seenFacilityIds.has(facilityId)) {
             seenFacilityIds.add(facilityId);
@@ -262,13 +447,21 @@ export class RestaurantImportService {
       });
 
       if (batchIds.length) {
-        await tx.delete(restaurantAwards).where(inArray(restaurantAwards.restaurantId, batchIds));
-        await tx.delete(restaurantCuisines).where(inArray(restaurantCuisines.restaurantId, batchIds));
-        await tx.delete(restaurantFacilities).where(inArray(restaurantFacilities.restaurantId, batchIds));
+        await tx
+          .delete(restaurantAwards)
+          .where(inArray(restaurantAwards.restaurantId, batchIds));
+        await tx
+          .delete(restaurantCuisines)
+          .where(inArray(restaurantCuisines.restaurantId, batchIds));
+        await tx
+          .delete(restaurantFacilities)
+          .where(inArray(restaurantFacilities.restaurantId, batchIds));
       }
       if (awardRows.length) await tx.insert(restaurantAwards).values(awardRows);
-      if (cuisineRows.length) await tx.insert(restaurantCuisines).values(cuisineRows);
-      if (facilityRows.length) await tx.insert(restaurantFacilities).values(facilityRows);
+      if (cuisineRows.length)
+        await tx.insert(restaurantCuisines).values(cuisineRows);
+      if (facilityRows.length)
+        await tx.insert(restaurantFacilities).values(facilityRows);
 
       return saved.length;
     });
@@ -284,85 +477,122 @@ export class RestaurantImportService {
 
   private preloadTaxonomyCaches = async (): Promise<void> => {
     const db = this.databaseService.db;
-    const [countryRows, cityRows, cuisineRows, facilityRows, awardTypeRows] = await Promise.all([
-      db.select({ id: countries.id, name: countries.name }).from(countries),
-      db.select({ id: cities.id, name: cities.name, countryId: cities.countryId }).from(cities),
-      db
-        .select({ id: cuisines.id, name: cuisines.name, normalizedName: cuisines.normalizedName })
-        .from(cuisines),
-      db
-        .select({ id: facilities.id, name: facilities.name, normalizedName: facilities.normalizedName })
-        .from(facilities),
-      db.select({ id: awardTypes.id, code: awardTypes.code }).from(awardTypes),
-    ]);
-    countryRows.forEach(r => this.countryCache.set(normalizeKey(r.name), r.id));
-    cityRows.forEach(r => this.cityCache.set(`${r.countryId}:${normalizeKey(r.name)}`, r.id));
-    cuisineRows.forEach(r => this.cuisineCache.set(r.normalizedName, { id: r.id, name: r.name }));
-    facilityRows.forEach(r => this.facilityCache.set(r.normalizedName, r.id));
-    awardTypeRows.forEach(r => this.awardTypeCache.set(r.code, r.id));
+    const [countryRows, cityRows, cuisineRows, facilityRows, awardTypeRows] =
+      await Promise.all([
+        db.select({ id: countries.id, name: countries.name }).from(countries),
+        db
+          .select({
+            id: cities.id,
+            name: cities.name,
+            countryId: cities.countryId,
+          })
+          .from(cities),
+        db
+          .select({
+            id: cuisines.id,
+            name: cuisines.name,
+            normalizedName: cuisines.normalizedName,
+          })
+          .from(cuisines),
+        db
+          .select({
+            id: facilities.id,
+            name: facilities.name,
+            normalizedName: facilities.normalizedName,
+          })
+          .from(facilities),
+        db
+          .select({ id: awardTypes.id, code: awardTypes.code })
+          .from(awardTypes),
+      ]);
+    countryRows.forEach((r) =>
+      this.countryCache.set(normalizeKey(r.name), r.id),
+    );
+    cityRows.forEach((r) =>
+      this.cityCache.set(`${r.countryId}:${normalizeKey(r.name)}`, r.id),
+    );
+    cuisineRows.forEach((r) =>
+      this.cuisineCache.set(r.normalizedName, { id: r.id, name: r.name }),
+    );
+    facilityRows.forEach((r) => this.facilityCache.set(r.normalizedName, r.id));
+    awardTypeRows.forEach((r) => this.awardTypeCache.set(r.code, r.id));
   };
 
   private seedOfficialCuisines = async (): Promise<void> => {
-    const content = await readFile(`${process.cwd()}/cuisine_categories.md`, 'utf-8');
+    const content = await readFile(
+      `${process.cwd()}/cuisine_categories.md`,
+      "utf-8",
+    );
     const cuisineNames = content
-      .split('\n')
-      .map(line => line.trim().match(/^\d+\.\s+(.*)$/)?.[1]?.trim())
+      .split("\n")
+      .map((line) =>
+        line
+          .trim()
+          .match(/^\d+\.\s+(.*)$/)?.[1]
+          ?.trim(),
+      )
       .filter((line): line is string => Boolean(line));
     await this.ensureCuisinesBulk(cuisineNames);
   };
 
   private seedStandardAwardTypes = async (): Promise<void> => {
-    const needed = AWARD_CODES.filter(code => !this.awardTypeCache.has(code));
+    const needed = AWARD_CODES.filter((code) => !this.awardTypeCache.has(code));
     if (!needed.length) return;
     const inserted = await this.databaseService.db
       .insert(awardTypes)
-      .values(needed.map(code => ({ code })))
+      .values(needed.map((code) => ({ code })))
       .onConflictDoNothing({ target: awardTypes.code })
       .returning({ id: awardTypes.id, code: awardTypes.code });
-    inserted.forEach(r => this.awardTypeCache.set(r.code, r.id));
-    const missing = needed.filter(code => !this.awardTypeCache.has(code));
+    inserted.forEach((r) => this.awardTypeCache.set(r.code, r.id));
+    const missing = needed.filter((code) => !this.awardTypeCache.has(code));
     if (missing.length) {
       const rows = await this.databaseService.db
         .select({ id: awardTypes.id, code: awardTypes.code })
         .from(awardTypes)
         .where(inArray(awardTypes.code, missing as unknown as string[]));
-      rows.forEach(r => this.awardTypeCache.set(r.code, r.id));
+      rows.forEach((r) => this.awardTypeCache.set(r.code, r.id));
     }
   };
 
   private ensureCountriesBulk = async (names: string[]): Promise<void> => {
     const uniq = new Map<string, string>();
-    names.forEach(raw => {
+    names.forEach((raw) => {
       const key = normalizeKey(raw);
-      if (key && !this.countryCache.has(key)) uniq.set(key, normalizeLabel(raw));
+      if (key && !this.countryCache.has(key))
+        uniq.set(key, normalizeLabel(raw));
     });
     if (!uniq.size) return;
 
     const inserted = await this.databaseService.db
       .insert(countries)
-      .values([...uniq.values()].map(name => ({ name })))
+      .values([...uniq.values()].map((name) => ({ name })))
       .onConflictDoNothing({ target: countries.name })
       .returning({ id: countries.id, name: countries.name });
-    inserted.forEach(r => this.countryCache.set(normalizeKey(r.name), r.id));
+    inserted.forEach((r) => this.countryCache.set(normalizeKey(r.name), r.id));
 
-    const missingKeys = [...uniq.keys()].filter(k => !this.countryCache.has(k));
+    const missingKeys = [...uniq.keys()].filter(
+      (k) => !this.countryCache.has(k),
+    );
     if (!missingKeys.length) return;
-    const missingNames = missingKeys.map(k => uniq.get(k) as string);
+    const missingNames = missingKeys.map((k) => uniq.get(k) as string);
     const rows = await this.databaseService.db
       .select({ id: countries.id, name: countries.name })
       .from(countries)
       .where(inArray(countries.name, missingNames));
-    rows.forEach(r => this.countryCache.set(normalizeKey(r.name), r.id));
+    rows.forEach((r) => this.countryCache.set(normalizeKey(r.name), r.id));
   };
 
-  private ensureCitiesBulk = async (pairs: { country: string; city: string }[]): Promise<void> => {
+  private ensureCitiesBulk = async (
+    pairs: { country: string; city: string }[],
+  ): Promise<void> => {
     const uniq = new Map<string, { countryId: number; name: string }>();
     pairs.forEach(({ country, city }) => {
       const countryId = this.countryCache.get(normalizeKey(country));
       const cityKey = normalizeKey(city);
       if (!countryId || !cityKey) return;
       const key = `${countryId}:${cityKey}`;
-      if (!this.cityCache.has(key)) uniq.set(key, { countryId, name: normalizeLabel(city) });
+      if (!this.cityCache.has(key))
+        uniq.set(key, { countryId, name: normalizeLabel(city) });
     });
     if (!uniq.size) return;
 
@@ -370,10 +600,18 @@ export class RestaurantImportService {
       .insert(cities)
       .values([...uniq.values()])
       .onConflictDoNothing({ target: [cities.countryId, cities.name] })
-      .returning({ id: cities.id, name: cities.name, countryId: cities.countryId });
-    inserted.forEach(r => this.cityCache.set(`${r.countryId}:${normalizeKey(r.name)}`, r.id));
+      .returning({
+        id: cities.id,
+        name: cities.name,
+        countryId: cities.countryId,
+      });
+    inserted.forEach((r) =>
+      this.cityCache.set(`${r.countryId}:${normalizeKey(r.name)}`, r.id),
+    );
 
-    const missingEntries = [...uniq].filter(([key]) => !this.cityCache.has(key));
+    const missingEntries = [...uniq].filter(
+      ([key]) => !this.cityCache.has(key),
+    );
     if (!missingEntries.length) return;
     const conditions = missingEntries.map(([, value]) =>
       and(eq(cities.countryId, value.countryId), eq(cities.name, value.name)),
@@ -382,54 +620,82 @@ export class RestaurantImportService {
       .select({ id: cities.id, name: cities.name, countryId: cities.countryId })
       .from(cities)
       .where(or(...conditions));
-    rows.forEach(r => this.cityCache.set(`${r.countryId}:${normalizeKey(r.name)}`, r.id));
+    rows.forEach((r) =>
+      this.cityCache.set(`${r.countryId}:${normalizeKey(r.name)}`, r.id),
+    );
   };
 
   private ensureFacilitiesBulk = async (names: string[]): Promise<void> => {
     const uniq = new Map<string, string>();
-    names.forEach(raw => {
+    names.forEach((raw) => {
       const key = normalizeKey(raw);
-      if (key && !this.facilityCache.has(key)) uniq.set(key, normalizeLabel(raw));
+      if (key && !this.facilityCache.has(key))
+        uniq.set(key, normalizeLabel(raw));
     });
     if (!uniq.size) return;
 
     const inserted = await this.databaseService.db
       .insert(facilities)
-      .values([...uniq].map(([normalizedName, name]) => ({ name, normalizedName })))
+      .values(
+        [...uniq].map(([normalizedName, name]) => ({ name, normalizedName })),
+      )
       .onConflictDoNothing({ target: facilities.normalizedName })
-      .returning({ id: facilities.id, name: facilities.name, normalizedName: facilities.normalizedName });
-    inserted.forEach(r => this.facilityCache.set(r.normalizedName, r.id));
+      .returning({
+        id: facilities.id,
+        name: facilities.name,
+        normalizedName: facilities.normalizedName,
+      });
+    inserted.forEach((r) => this.facilityCache.set(r.normalizedName, r.id));
 
-    const missing = [...uniq.keys()].filter(k => !this.facilityCache.has(k));
+    const missing = [...uniq.keys()].filter((k) => !this.facilityCache.has(k));
     if (!missing.length) return;
     const rows = await this.databaseService.db
-      .select({ id: facilities.id, name: facilities.name, normalizedName: facilities.normalizedName })
+      .select({
+        id: facilities.id,
+        name: facilities.name,
+        normalizedName: facilities.normalizedName,
+      })
       .from(facilities)
       .where(inArray(facilities.normalizedName, missing));
-    rows.forEach(r => this.facilityCache.set(r.normalizedName, r.id));
+    rows.forEach((r) => this.facilityCache.set(r.normalizedName, r.id));
   };
 
   private ensureCuisinesBulk = async (names: string[]): Promise<void> => {
     const uniq = new Map<string, string>();
-    names.forEach(raw => {
+    names.forEach((raw) => {
       const key = normalizeKey(raw);
-      if (key && !this.cuisineCache.has(key)) uniq.set(key, normalizeLabel(raw));
+      if (key && !this.cuisineCache.has(key))
+        uniq.set(key, normalizeLabel(raw));
     });
     if (!uniq.size) return;
 
     const inserted = await this.databaseService.db
       .insert(cuisines)
-      .values([...uniq].map(([normalizedName, name]) => ({ name, normalizedName })))
+      .values(
+        [...uniq].map(([normalizedName, name]) => ({ name, normalizedName })),
+      )
       .onConflictDoNothing({ target: cuisines.normalizedName })
-      .returning({ id: cuisines.id, name: cuisines.name, normalizedName: cuisines.normalizedName });
-    inserted.forEach(r => this.cuisineCache.set(r.normalizedName, { id: r.id, name: r.name }));
+      .returning({
+        id: cuisines.id,
+        name: cuisines.name,
+        normalizedName: cuisines.normalizedName,
+      });
+    inserted.forEach((r) =>
+      this.cuisineCache.set(r.normalizedName, { id: r.id, name: r.name }),
+    );
 
-    const missing = [...uniq.keys()].filter(k => !this.cuisineCache.has(k));
+    const missing = [...uniq.keys()].filter((k) => !this.cuisineCache.has(k));
     if (!missing.length) return;
     const rows = await this.databaseService.db
-      .select({ id: cuisines.id, name: cuisines.name, normalizedName: cuisines.normalizedName })
+      .select({
+        id: cuisines.id,
+        name: cuisines.name,
+        normalizedName: cuisines.normalizedName,
+      })
       .from(cuisines)
       .where(inArray(cuisines.normalizedName, missing));
-    rows.forEach(r => this.cuisineCache.set(r.normalizedName, { id: r.id, name: r.name }));
+    rows.forEach((r) =>
+      this.cuisineCache.set(r.normalizedName, { id: r.id, name: r.name }),
+    );
   };
 }

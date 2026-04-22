@@ -1,9 +1,15 @@
-import { BadRequestException, Injectable, PipeTransform, Scope, Type } from '@nestjs/common';
-import { ModuleRef } from '@nestjs/core';
-import { getModelToken } from '@nestjs/mongoose';
-import { isValidObjectId, Model } from 'mongoose';
-import { CustomValidationOptions } from './decorators/options/unique-exists.options';
-import { ClassType } from './decorators/unique-exists.decorator';
+import {
+  BadRequestException,
+  Injectable,
+  PipeTransform,
+  Scope,
+  Type,
+} from "@nestjs/common";
+import { ModuleRef } from "@nestjs/core";
+import { getModelToken } from "@nestjs/mongoose";
+import { isValidObjectId, Model } from "mongoose";
+import { CustomValidationOptions } from "./decorators/options/unique-exists.options";
+import { ClassType } from "./decorators/unique-exists.decorator";
 
 export function getDocumentByIdPipe<T>(
   model: ClassType<T>,
@@ -15,7 +21,7 @@ export function getDocumentByIdPipe<T>(
 
     async transform(id: string): Promise<T> {
       if (!validationOptions?.property && !isValidObjectId(id)) {
-        throw new BadRequestException('INVALID_MONGO_ID');
+        throw new BadRequestException("INVALID_MONGO_ID");
       }
 
       const modelToken = getModelToken(model.name);
@@ -23,7 +29,10 @@ export function getDocumentByIdPipe<T>(
         strict: false,
       });
 
-      const query: Record<string, any> = { [validationOptions?.property ?? '_id']: id, ...validationOptions?.queries };
+      const query: Record<string, any> = {
+        [validationOptions?.property ?? "_id"]: id,
+        ...validationOptions?.queries,
+      };
       if (validationOptions?.excludeDeleted) query.deletedAt = null;
 
       const document = await modelInstance.findOne(query).exec();

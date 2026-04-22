@@ -1,8 +1,8 @@
-import * as bcrypt from 'bcrypt';
-import { Encrypter } from './template.encrypter';
+import * as bcrypt from "bcrypt";
+import { Encrypter } from "./template.encrypter";
 
 export class BcryptEncrypter extends Encrypter {
-  name: string = 'bcrypt';
+  name: string = "bcrypt";
 
   securityLevel: number = 50;
 

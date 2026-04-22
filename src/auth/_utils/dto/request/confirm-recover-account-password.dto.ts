@@ -1,5 +1,5 @@
-import { IsString } from 'class-validator';
-import StrongPasswordDecorator from '../../../../_utils/decorators/strong-password.decorator';
+import { IsString } from "class-validator";
+import StrongPasswordDecorator from "../../../../_utils/decorators/strong-password.decorator";
 
 export class ConfirmRecoverAccountPasswordDto {
   @IsString()

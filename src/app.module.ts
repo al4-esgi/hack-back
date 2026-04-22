@@ -30,6 +30,6 @@ import { RestaurantListsModule } from "./restaurant-lists/restaurant-lists.modul
     RestaurantListsModule,
   ],
   controllers: [AppController],
-  providers: [AppService, BootstrapService],
+  providers: [AppService],
 })
 export class AppModule {}

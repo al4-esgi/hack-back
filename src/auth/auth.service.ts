@@ -5,9 +5,7 @@ import { GetUserType } from "src/users/users.entity";
 
 @Injectable()
 export class AuthService {
-  constructor(
-    private jwtService: JwtService,
-  ) {}
+  constructor(private jwtService: JwtService) {}
 
   generateJwt(user: GetUserType) {
     const payload: JwtPayloadInterface = {

@@ -12,24 +12,24 @@ import { JwtStrategy } from "./strategy/jwt.strategy";
 import { GoogleStrategy } from "./strategy/google.strategy";
 
 @Module({
-	imports: [
-		UsersModule,
-		PassportModule.register({ defaultStrategy: "jwt" }),
-		JwtModule.registerAsync({
-			imports: [ConfigModule],
-			inject: [ConfigService],
-			useFactory: async (
-				configService: ConfigService<EnvironmentVariables, true>,
-			) => ({
-				secret: configService.get("JWT_SECRET"),
-				signOptions: { expiresIn: configService.get("JWT_EXPIRATION") },
-			}),
-		}),
-		NodemailerModule,
-		EncryptionModule,
-	],
-	providers: [AuthService, JwtStrategy, GoogleStrategy],
-	exports: [AuthService],
-	controllers: [AuthController],
+  imports: [
+    UsersModule,
+    PassportModule.register({ defaultStrategy: "jwt" }),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (
+        configService: ConfigService<EnvironmentVariables, true>,
+      ) => ({
+        secret: configService.get("JWT_SECRET"),
+        signOptions: { expiresIn: configService.get("JWT_EXPIRATION") },
+      }),
+    }),
+    NodemailerModule,
+    EncryptionModule,
+  ],
+  providers: [AuthService, JwtStrategy, GoogleStrategy],
+  exports: [AuthService],
+  controllers: [AuthController],
 })
 export class AuthModule {}

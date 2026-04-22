@@ -1,7 +1,7 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { MailerService } from '@nestjs-modules/mailer';
-import { EnvironmentVariables } from '../_utils/config/env.config';
+import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { MailerService } from "@nestjs-modules/mailer";
+import { EnvironmentVariables } from "../_utils/config/env.config";
 
 @Injectable()
 export class NodemailerService implements OnModuleInit {
@@ -13,28 +13,33 @@ export class NodemailerService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    const smtpHost = this.configService.get('SMTP_HOST');
-    const smtpFrom = this.configService.get('SMTP_FROM');
-    const smtpPort = this.configService.get('SMTP_PORT');
-    const smtpUser = this.configService.get('SMTP_USER');
-    const smtpPassword = this.configService.get('SMTP_PASSWORD');
-    const smtpPreview = this.configService.get('SMTP_PREVIEW');
+    const smtpHost = this.configService.get("SMTP_HOST");
+    const smtpFrom = this.configService.get("SMTP_FROM");
+    const smtpPort = this.configService.get("SMTP_PORT");
+    const smtpUser = this.configService.get("SMTP_USER");
+    const smtpPassword = this.configService.get("SMTP_PASSWORD");
+    const smtpPreview = this.configService.get("SMTP_PREVIEW");
 
     if (!smtpHost || !smtpFrom || !smtpPort || !smtpUser || !smtpPassword)
-      this.logger.error('SMTP configuration is missing');
+      this.logger.error("SMTP configuration is missing");
 
-    if (smtpPreview) this.logger.debug('SMTP preview mode is enabled');
+    if (smtpPreview) this.logger.debug("SMTP preview mode is enabled");
   }
 
-  sendForgotPasswordEmail = (email: string, name: string, resetPasswordToken: string, tokenExpire?: Date | null) =>
+  sendForgotPasswordEmail = (
+    email: string,
+    name: string,
+    resetPasswordToken: string,
+    tokenExpire?: Date | null,
+  ) =>
     this.mailerService.sendMail({
       to: email,
       subject: `Vos informations de connexion`,
-      template: 'forgot-password.template.ejs',
+      template: "forgot-password.template.ejs",
       context: {
         name: name,
         forgotPasswordUrl: `${this.configService.get(
-          'FRONT_URL',
+          "FRONT_URL",
         )}/recover-password?code=${resetPasswordToken}&time=${tokenExpire ?? new Date()}`,
       },
     });

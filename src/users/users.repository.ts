@@ -15,9 +15,7 @@ import { normalizeRestaurantListName } from "src/restaurant-lists/_utils/functio
 export class UsersRepository {
   private readonly orFailNotFound = new NotFoundException("User not found");
 
-  constructor(
-    private readonly databaseService: DatabaseService,
-  ) {}
+  constructor(private readonly databaseService: DatabaseService) {}
 
   async findByGoogleId(googleId: string) {
     const users = await this.databaseService.db

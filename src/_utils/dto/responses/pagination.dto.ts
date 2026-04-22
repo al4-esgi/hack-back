@@ -1,7 +1,7 @@
-import { PaginatedQueryDto } from '../requests/paginated-query.dto';
-import { PaginationMetaDto } from './pagination-meta.dto';
+import { PaginatedQueryDto } from "../requests/paginated-query.dto";
+import { PaginationMetaDto } from "./pagination-meta.dto";
 
-export { PaginationMetaDto } from './pagination-meta.dto';
+export { PaginationMetaDto } from "./pagination-meta.dto";
 
 export class PaginationDto {
   meta: PaginationMetaDto;
@@ -10,7 +10,10 @@ export class PaginationDto {
     this.meta = {
       currentPage: paginatedQuery.page,
       totalItemsCount,
-      totalPagesCount: totalItemsCount === 0 ? 0 : Math.ceil(totalItemsCount / paginatedQuery.limit),
+      totalPagesCount:
+        totalItemsCount === 0
+          ? 0
+          : Math.ceil(totalItemsCount / paginatedQuery.limit),
       itemsPerPage: paginatedQuery.limit,
     };
   }

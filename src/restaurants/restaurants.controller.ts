@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query } from "@nestjs/common";
 import {
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -11,32 +11,38 @@ import { AutocompleteOptionDto } from 'src/_utils/dto/responses/autocomplete-opt
 import { RestaurantDetailsDto } from './_utils/dto/response/restaurant-details.dto';
 import { RestaurantsService } from './restaurants.service';
 
-@ApiTags('Restaurants')
-@Controller('restaurants')
+@ApiTags("Restaurants")
+@Controller("restaurants")
 export class RestaurantsController {
   constructor(private readonly restaurantsService: RestaurantsService) {}
 
   @Get('filters/cuisines')
   @ApiOperation({ summary: 'Cuisines for autocomplete (optional `q` substring filter).' })
   @ApiOkResponse({ type: [AutocompleteOptionDto] })
-  autocompleteCuisines(@Query() query: AutocompleteQueryDto): Promise<AutocompleteOptionDto[]> {
+  autocompleteCuisines(
+    @Query() query: AutocompleteQueryDto,
+  ): Promise<AutocompleteOptionDto[]> {
     return this.restaurantsService.autocompleteCuisines(query.q, query.limit);
   }
 
-  @Get('filters/facilities')
-  @ApiOperation({ summary: 'Facilities for autocomplete (optional `q` substring filter).' })
+  @Get("filters/facilities")
+  @ApiOperation({
+    summary: "Facilities for autocomplete (optional `q` substring filter).",
+  })
   @ApiOkResponse({ type: [AutocompleteOptionDto] })
-  autocompleteFacilities(@Query() query: AutocompleteQueryDto): Promise<AutocompleteOptionDto[]> {
+  autocompleteFacilities(
+    @Query() query: AutocompleteQueryDto,
+  ): Promise<AutocompleteOptionDto[]> {
     return this.restaurantsService.autocompleteFacilities(query.q, query.limit);
   }
 
-  @Get(':restaurantId')
-  @ApiParam({ type: 'number', name: 'restaurantId' })
-  @ApiOperation({ summary: 'Get restaurant details by ID.' })
+  @Get(":restaurantId")
+  @ApiParam({ type: "number", name: "restaurantId" })
+  @ApiOperation({ summary: "Get restaurant details by ID." })
   @ApiOkResponse({ type: RestaurantDetailsDto })
-  @ApiNotFoundResponse({ description: 'Restaurant not found.' })
+  @ApiNotFoundResponse({ description: "Restaurant not found." })
   getRestaurantById(
-    @Param('restaurantId', ParseIntPipe) restaurantId: number,
+    @Param("restaurantId", ParseIntPipe) restaurantId: number,
   ): Promise<RestaurantDetailsDto> {
     return this.restaurantsService.getRestaurantById(restaurantId);
   }
