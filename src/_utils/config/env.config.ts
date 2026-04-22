@@ -42,6 +42,10 @@ export class EnvironmentVariables {
 
   @IsBoolean()
   SMTP_PREVIEW: boolean = false;
+
+  @IsString()
+  @Optional()
+  APIFY_TOKEN?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>) {

@@ -1,9 +1,19 @@
 import { Module } from '@nestjs/common';
-import { InstagramScrapingService } from './instagram-scraping.service';
+import { DatabaseModule } from 'src/database/database.module';
+import { InstagramPostMapper } from './_utils/instagram-post.mapper';
+import { ApifyScraperService } from './apify-scraper.service';
+import { InstagramPostRepository } from './instagram-post.repository';
 import { InstagramScrapingController } from './instagram-scraping.controller';
+import { InstagramScrapingService } from './instagram-scraping.service';
 
 @Module({
-  providers: [InstagramScrapingService],
-  controllers: [InstagramScrapingController]
+  imports: [DatabaseModule],
+  providers: [
+    InstagramScrapingService,
+    ApifyScraperService,
+    InstagramPostRepository,
+    InstagramPostMapper,
+  ],
+  controllers: [InstagramScrapingController],
 })
 export class InstagramScrapingModule {}
