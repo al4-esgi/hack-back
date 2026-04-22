@@ -1,3 +1,0 @@
-{"sessionId":"1e4764","runId":"migrate-1776792637913","hypothesisId":"H1","location":"drizzle.config.ts:4","message":"Drizzle config file loaded","data":{"hasDatabaseUrl":true},"timestamp":1776792637914}
-{"sessionId":"1e4764","runId":"migrate-1776792637913","hypothesisId":"H2","location":"drizzle.config.ts:5","message":"Migration candidate file presence","data":{"suspectMigration":"drizzle/migrations/0002_optimize_michelin_schema.sql"},"timestamp":1776792637973}
-{"sessionId":"1e4764","runId":"migrate-1776792637913","hypothesisId":"H3","location":"drizzle.config.ts:6","message":"Potential SQL incompatibility markers","data":{"checkConstraintContainsSubquery":true,"referencedColumnHasGreenStar":true},"timestamp":1776792637974}
