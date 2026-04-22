@@ -14,6 +14,8 @@ export enum UnifiedSearchSortBy {
   NAME = 'name',
   CREATED_AT = 'createdAt',
   DISTANCE = 'distance',
+  /** Restaurant rows: max Michelin stars; hotel rows sort as NULL (last). Same semantics as legacy GET /restaurants. */
+  STARS = 'stars',
 }
 
 const toSearchTypes = ({ value }: { value?: string | string[] }): SearchType[] => {
@@ -81,7 +83,7 @@ export class UnifiedSearchQueryDto extends PaginatedQueryDto {
   @IsNumber()
   @Min(-90)
   @Max(90)
-  @ValidateIf(o => o.lat !== undefined || o.lng !== undefined || o.radiusKm !== undefined)
+  @Optional()
   lat?: number;
 
   @ApiPropertyOptional({ type: 'number', description: 'Center longitude for radius search.' })
@@ -89,7 +91,7 @@ export class UnifiedSearchQueryDto extends PaginatedQueryDto {
   @IsNumber()
   @Min(-180)
   @Max(180)
-  @ValidateIf(o => o.lat !== undefined || o.lng !== undefined || o.radiusKm !== undefined)
+  @Optional()
   lng?: number;
 
   @ApiPropertyOptional({ type: 'number', minimum: 0.1, maximum: 200, default: 10, description: 'Search radius in km.' })
@@ -97,7 +99,7 @@ export class UnifiedSearchQueryDto extends PaginatedQueryDto {
   @IsNumber()
   @Min(0.1)
   @Max(200)
-  @ValidateIf(o => o.lat !== undefined || o.lng !== undefined || o.radiusKm !== undefined)
+  @Optional()
   radiusKm?: number;
 
   // ─── Hotel-only filters ───
@@ -201,7 +203,12 @@ export class UnifiedSearchQueryDto extends PaginatedQueryDto {
 
   // ─── Sort ───
 
-  @ApiPropertyOptional({ enum: UnifiedSearchSortBy, default: UnifiedSearchSortBy.NAME, description: 'Sort key. `distance` requires lat/lng.' })
+  @ApiPropertyOptional({
+    enum: UnifiedSearchSortBy,
+    default: UnifiedSearchSortBy.NAME,
+    description:
+      'Sort key. `distance` requires lat/lng. `stars` applies to restaurants (hotels have no stars; they order after restaurants when sorting by stars).',
+  })
   @IsEnum(UnifiedSearchSortBy)
   @Optional()
   sortBy: UnifiedSearchSortBy = UnifiedSearchSortBy.NAME;

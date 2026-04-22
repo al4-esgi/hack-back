@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { and, eq, ilike, inArray, notInArray, or, sql, type SQL } from 'drizzle-orm';
+import { AutocompleteHelper } from 'src/_shared/autocomplete/autocomplete.helper';
+import { AutocompleteOptionDto } from 'src/_utils/dto/responses/autocomplete-option.dto';
 import { DatabaseService } from 'src/database/database.service';
+import { SortDirection } from 'src/_utils/dto/requests/paginated-query.dto';
 import { GREEN_STAR_CODE, MICHELIN_STAR_CODE } from 'src/restaurants/_constants';
 import { hotelAmenities } from 'src/hotels/hotel-amenities.entity';
 import { hotelHotelAmenities } from 'src/hotels/hotel-hotel-amenities.entity';
@@ -16,7 +19,7 @@ import {
   restaurantFacilities,
   restaurants,
 } from 'src/restaurants/entities';
-import { SearchType, UnifiedSearchQueryDto, UnifiedSearchSortBy } from './_utils/dto/request/unified-search.query.dto';
+import { UnifiedSearchQueryDto, UnifiedSearchSortBy } from './_utils/dto/request/unified-search.query.dto';
 import {
   UnifiedHotelItemDto,
   UnifiedRestaurantItemDto,
@@ -49,7 +52,10 @@ function getPgExecuteRows<T>(result: unknown): T[] {
 
 @Injectable()
 export class SearchService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly autocompleteHelper: AutocompleteHelper,
+  ) {}
 
   search = async (query: UnifiedSearchQueryDto): Promise<UnifiedSearchResultDto> => {
     const subqueries: SQL[] = [];
@@ -174,8 +180,10 @@ export class SearchService {
         ${countries.name} AS country,
         ${hotels.createdAt} AS created_at,
         ${distanceExpr} AS distance_meters,
+        NULL::float8 AS stars_sort,
         jsonb_build_object(
           'content', ${hotels.content},
+          'canonicalUrl', ${hotels.canonicalUrl},
           'mainImageUrl', ${hotels.mainImageUrl},
           'phone', ${hotels.phone},
           'distinctions', ${hotels.distinctions},
@@ -250,8 +258,12 @@ export class SearchService {
     }
 
     // Price level
-    if (query.minPriceLevel) whereClauses.push(sql`${restaurants.priceLevel} >= ${query.minPriceLevel}`);
-    if (query.maxPriceLevel) whereClauses.push(sql`${restaurants.priceLevel} <= ${query.maxPriceLevel}`);
+    if (query.minPriceLevel !== undefined) {
+      whereClauses.push(sql`${restaurants.priceLevel} >= ${query.minPriceLevel}`);
+    }
+    if (query.maxPriceLevel !== undefined) {
+      whereClauses.push(sql`${restaurants.priceLevel} <= ${query.maxPriceLevel}`);
+    }
 
     const whereExpr = whereClauses.length > 0 ? and(...whereClauses) : sql`true`;
 
@@ -278,12 +290,6 @@ export class SearchService {
       LIMIT 1
     )`;
 
-    const starsSub = sql`(
-      SELECT MAX(${restaurantAwards.starsCount})
-      FROM ${restaurantAwards}
-      WHERE ${restaurantAwards.restaurantId} = ${restaurants.id}
-    )`;
-
     const greenStarSub = sql`coalesce((
       SELECT BOOL_OR(${awardTypes.code} = ${GREEN_STAR_CODE})
       FROM ${restaurantAwards}
@@ -294,6 +300,12 @@ export class SearchService {
     const distanceExpr = query.hasGeo
       ? sql`ST_Distance(${restaurants.location}, ST_SetSRID(ST_MakePoint(${query.lng}, ${query.lat}), 4326)::geography)`
       : sql`NULL::float8`;
+
+    const starsSortExpr = sql`(
+      SELECT MAX(${restaurantAwards.starsCount})
+      FROM ${restaurantAwards}
+      WHERE ${restaurantAwards.restaurantId} = ${restaurants.id}
+    )`;
 
     return sql`
       SELECT
@@ -307,6 +319,7 @@ export class SearchService {
         ${countries.name} AS country,
         ${restaurants.createdAt} AS created_at,
         ${distanceExpr} AS distance_meters,
+        ${starsSortExpr} AS stars_sort,
         NULL::jsonb AS hotel_details,
         jsonb_build_object(
           'description', ${restaurants.description},
@@ -314,7 +327,7 @@ export class SearchService {
           'websiteUrl', ${restaurants.websiteUrl},
           'phoneNumber', ${restaurants.phoneNumber},
           'awardCode', ${awardCodeSub},
-          'stars', ${starsSub},
+          'stars', ${starsSortExpr},
           'hasGreenStar', ${greenStarSub},
           'cuisines', ${cuisinesAgg},
           'facilities', ${facilitiesAgg},
@@ -330,21 +343,28 @@ export class SearchService {
   // ─── Helpers ───
 
   private buildOrderBy(query: UnifiedSearchQueryDto): SQL {
-    const dir = query.sortDirection === 'ASC' ? sql`ASC` : sql`DESC`;
+    const dir = query.sortDirection === SortDirection.ASC ? sql`ASC` : sql`DESC`;
+    const tieBreak = sql`, type ASC, id ASC`;
 
     switch (query.sortBy) {
       case UnifiedSearchSortBy.DISTANCE:
         if (query.hasGeo) {
-          return sql`ORDER BY distance_meters ASC NULLS LAST, id ASC`;
+          return sql`ORDER BY distance_meters ASC NULLS LAST${tieBreak}`;
         }
-        return sql`ORDER BY name ${dir}, id ASC`;
+        return sql`ORDER BY name ${dir}${tieBreak}`;
 
       case UnifiedSearchSortBy.CREATED_AT:
-        return sql`ORDER BY created_at ${dir}, id ASC`;
+        return sql`ORDER BY created_at ${dir}${tieBreak}`;
+
+      case UnifiedSearchSortBy.STARS:
+        if (query.sortDirection === SortDirection.ASC) {
+          return sql`ORDER BY stars_sort ASC NULLS LAST${tieBreak}`;
+        }
+        return sql`ORDER BY stars_sort DESC NULLS LAST${tieBreak}`;
 
       case UnifiedSearchSortBy.NAME:
       default:
-        return sql`ORDER BY name ${dir}, id ASC`;
+        return sql`ORDER BY name ${dir}${tieBreak}`;
     }
   }
 
@@ -392,6 +412,7 @@ export class SearchService {
       name: row.name,
       address: row.address,
       content: details.content ?? null,
+      canonicalUrl: details.canonicalUrl ?? null,
       mainImageUrl: details.mainImageUrl ?? null,
       lat: row.lat,
       lng: row.lng,
@@ -435,4 +456,27 @@ export class SearchService {
       distanceMeters: row.distance_meters,
     };
   }
+
+  autocompleteCountries = (q: string | undefined, limit: number): Promise<AutocompleteOptionDto[]> =>
+    this.autocompleteHelper.autocompleteOptions({
+      table: countries,
+      idColumn: countries.id,
+      nameColumn: countries.name,
+      q,
+      limit,
+    });
+
+  autocompleteCities = (
+    q: string | undefined,
+    limit: number,
+    countryId?: number,
+  ): Promise<AutocompleteOptionDto[]> =>
+    this.autocompleteHelper.autocompleteOptions({
+      table: cities,
+      idColumn: cities.id,
+      nameColumn: cities.name,
+      additionalWhere: countryId ? eq(cities.countryId, countryId) : undefined,
+      q,
+      limit,
+    });
 }

@@ -14,6 +14,9 @@ export class UnifiedHotelItemDto {
   @ApiProperty({ type: String, nullable: true })
   content: string | null;
 
+  @ApiProperty({ type: String, nullable: true, example: 'https://guide.michelin.com/…' })
+  canonicalUrl: string | null;
+
   @ApiProperty({ type: String, nullable: true })
   mainImageUrl: string | null;
 
