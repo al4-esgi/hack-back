@@ -11,6 +11,6 @@ export const databaseProviders: Provider[] =  [{
   inject: [ConfigService],
   useFactory(configService: ConfigService) {
     const pool = new Pool({ connectionString: configService.get("DATABASE_URL") });
-    return drizzle(pool, { schema, logger: true }) as NodePgDatabase<Schema>;
+    return drizzle(pool, { schema, logger: false }) as NodePgDatabase<Schema>;
   },
 }]

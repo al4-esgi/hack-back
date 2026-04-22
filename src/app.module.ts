@@ -7,6 +7,8 @@ import { ConfigModule } from '@nestjs/config';
 import { validateEnv } from './_utils/config/env.config';
 import { NodemailerModule } from './nodemailer/nodemailer.module';
 import { DatabaseModule } from './database/database.module';
+import { RestaurantsModule } from './restaurants/restaurants.module';
+import { BootstrapService } from './bootstrap.service';
 
 @Module({
   imports: [
@@ -15,9 +17,9 @@ import { DatabaseModule } from './database/database.module';
     AuthModule,
     UsersModule,
     NodemailerModule,
-    DatabaseModule,
+    RestaurantsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, BootstrapService],
 })
 export class AppModule {}
