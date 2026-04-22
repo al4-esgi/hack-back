@@ -1,6 +1,6 @@
 import { UserRoleEnumType } from "../user-role.enum"
 
-export class CreateUser {
+export interface CreateUser {
   email: string
   firstname: string
   lastname: string
