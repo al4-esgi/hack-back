@@ -223,6 +223,32 @@ export class RestaurantListsRepository {
       });
   }
 
+  async isRestaurantInList(listId: number, restaurantId: number): Promise<boolean> {
+    const items = await this.databaseService.db
+      .select({ listId: schema.restaurantListRestaurants.listId })
+      .from(schema.restaurantListRestaurants)
+      .where(
+        and(
+          eq(schema.restaurantListRestaurants.listId, listId),
+          eq(schema.restaurantListRestaurants.restaurantId, restaurantId),
+        ),
+      )
+      .limit(1);
+
+    return items.length > 0;
+  }
+
+  async removeRestaurantFromList(listId: number, restaurantId: number): Promise<void> {
+    await this.databaseService.db
+      .delete(schema.restaurantListRestaurants)
+      .where(
+        and(
+          eq(schema.restaurantListRestaurants.listId, listId),
+          eq(schema.restaurantListRestaurants.restaurantId, restaurantId),
+        ),
+      );
+  }
+
   async addGenericItemToList(
     listId: number,
     itemType: string,
@@ -244,5 +270,33 @@ export class RestaurantListsRepository {
           schema.restaurantListItems.itemId,
         ],
       });
+  }
+
+  async isGenericItemInList(listId: number, itemType: string, itemId: number): Promise<boolean> {
+    const items = await this.databaseService.db
+      .select({ id: schema.restaurantListItems.id })
+      .from(schema.restaurantListItems)
+      .where(
+        and(
+          eq(schema.restaurantListItems.listId, listId),
+          eq(schema.restaurantListItems.itemType, itemType),
+          eq(schema.restaurantListItems.itemId, itemId),
+        ),
+      )
+      .limit(1);
+
+    return items.length > 0;
+  }
+
+  async removeGenericItemFromList(listId: number, itemType: string, itemId: number): Promise<void> {
+    await this.databaseService.db
+      .delete(schema.restaurantListItems)
+      .where(
+        and(
+          eq(schema.restaurantListItems.listId, listId),
+          eq(schema.restaurantListItems.itemType, itemType),
+          eq(schema.restaurantListItems.itemId, itemId),
+        ),
+      );
   }
 }

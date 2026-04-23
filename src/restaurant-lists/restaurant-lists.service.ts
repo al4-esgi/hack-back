@@ -141,6 +141,12 @@ export class RestaurantListsService {
       throw this.listNotFound;
     }
 
+    const isAlreadyInList = await this.restaurantListsRepository.isRestaurantInList(listId, restaurantId);
+    if (isAlreadyInList) {
+      await this.restaurantListsRepository.removeRestaurantFromList(listId, restaurantId);
+      return;
+    }
+
     const restaurant = await this.restaurantListsRepository.findRestaurantById(restaurantId);
     if (!restaurant) {
       throw this.restaurantNotFound;
@@ -164,16 +170,25 @@ export class RestaurantListsService {
 
     const itemType = dto.itemType;
     if (itemType === 'restaurant') {
-      const restaurant = await this.restaurantListsRepository.findRestaurantById(dto.itemId);
-      if (!restaurant) {
-        throw this.restaurantNotFound;
-      }
-
-      await this.restaurantListsRepository.addRestaurantToList(listId, restaurant.id);
+      await this.toggleRestaurantInList(listId, dto.itemId);
       return;
     }
 
     if (itemType === 'hotel') {
+      const isAlreadyInList = await this.restaurantListsRepository.isGenericItemInList(
+        listId,
+        itemType,
+        dto.itemId,
+      );
+      if (isAlreadyInList) {
+        await this.restaurantListsRepository.removeGenericItemFromList(
+          listId,
+          itemType,
+          dto.itemId,
+        );
+        return;
+      }
+
       const hotel = await this.restaurantListsRepository.findHotelById(dto.itemId);
       if (!hotel) {
         throw this.hotelNotFound;
@@ -188,6 +203,20 @@ export class RestaurantListsService {
       return;
     }
 
+    const isAlreadyInList = await this.restaurantListsRepository.isGenericItemInList(
+      listId,
+      itemType,
+      dto.itemId,
+    );
+    if (isAlreadyInList) {
+      await this.restaurantListsRepository.removeGenericItemFromList(
+        listId,
+        itemType,
+        dto.itemId,
+      );
+      return;
+    }
+
     if (!dto.name) {
       throw new BadRequestException('name is required for custom item types');
     }
@@ -198,6 +227,21 @@ export class RestaurantListsService {
       dto.itemId,
       dto.name,
     );
+  }
+
+  private async toggleRestaurantInList(listId: number, restaurantId: number): Promise<void> {
+    const isAlreadyInList = await this.restaurantListsRepository.isRestaurantInList(listId, restaurantId);
+    if (isAlreadyInList) {
+      await this.restaurantListsRepository.removeRestaurantFromList(listId, restaurantId);
+      return;
+    }
+
+    const restaurant = await this.restaurantListsRepository.findRestaurantById(restaurantId);
+    if (!restaurant) {
+      throw this.restaurantNotFound;
+    }
+
+    await this.restaurantListsRepository.addRestaurantToList(listId, restaurant.id);
   }
 
   private assertUserCanAccessLists(userId: number, connectedUser: GetUserType): void {

@@ -119,8 +119,8 @@ export class RestaurantListsController {
   @ApiParam({ type: 'number', name: 'userId' })
   @ApiParam({ type: 'number', name: 'listId' })
   @ApiParam({ type: 'number', name: 'restaurantId' })
-  @ApiOperation({ summary: 'Add a restaurant to a user list' })
-  @ApiNoContentResponse({ description: 'Restaurant added to list.' })
+  @ApiOperation({ summary: 'Toggle a restaurant in a user list' })
+  @ApiNoContentResponse({ description: 'Restaurant toggled in list.' })
   addRestaurantToList(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('listId', ParseIntPipe) listId: number,
@@ -139,8 +139,8 @@ export class RestaurantListsController {
   @HttpCode(204)
   @ApiParam({ type: 'number', name: 'userId' })
   @ApiParam({ type: 'number', name: 'listId' })
-  @ApiOperation({ summary: 'Add an item (restaurant, hotel, or custom type) to a user list' })
-  @ApiNoContentResponse({ description: 'Item added to list.' })
+  @ApiOperation({ summary: 'Toggle an item (restaurant, hotel, or custom type) in a user list' })
+  @ApiNoContentResponse({ description: 'Item toggled in list.' })
   addListItem(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('listId', ParseIntPipe) listId: number,
