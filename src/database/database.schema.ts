@@ -23,6 +23,7 @@ import {
 } from "src/tiktok-scraping/tiktok-post.entity";
 import { restaurantListRestaurants } from "src/restaurant-lists/restaurant-list-restaurants.entity";
 import { restaurantLists } from "src/restaurant-lists/restaurant-lists.entity";
+import { restaurantImages } from "src/restaurants/entities/restaurant-images.entity";
 
 export const schema = {
   user,
@@ -31,6 +32,7 @@ export const schema = {
   countries,
   cities,
   restaurants,
+  restaurantImages,
   cuisines,
   restaurantCuisines,
   facilities,
@@ -55,3 +57,4 @@ export type { GetTikTokPostType } from "src/tiktok-scraping/tiktok-post.entity";
 
 export type Schema = typeof schema;
 export type SchemaName = keyof Schema;
+

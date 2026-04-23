@@ -1,7 +1,7 @@
-import { Encrypter } from './template.encrypter';
+import { Encrypter } from "./template.encrypter";
 
 export class NoopEncrypter extends Encrypter {
-  name: string = 'noop';
+  name: string = "noop";
 
   securityLevel: number = 0;
 

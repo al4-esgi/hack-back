@@ -1,8 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from "@nestjs/common";
 
-import { Encrypter } from './encryptors/template.encrypter';
-import { BcryptEncrypter } from './encryptors/bcrypt.encrypter';
-import { NoopEncrypter } from './encryptors/noop.encrypter';
+import { Encrypter } from "./encryptors/template.encrypter";
+import { BcryptEncrypter } from "./encryptors/bcrypt.encrypter";
+import { NoopEncrypter } from "./encryptors/noop.encrypter";
 
 interface PasswordStatus {
   isPasswordCorrect: boolean;
@@ -18,15 +18,23 @@ export class EncryptionService {
   private readonly encryptors: Map<string, Encrypter>;
 
   constructor() {
-    const initEncryptors = this.initEncryptors.map(encrypter => new encrypter());
-    const encryptorsSet = new Set(initEncryptors.map(encrypter => encrypter.name));
+    const initEncryptors = this.initEncryptors.map(
+      (encrypter) => new encrypter(),
+    );
+    const encryptorsSet = new Set(
+      initEncryptors.map((encrypter) => encrypter.name),
+    );
 
     if (encryptorsSet.size < initEncryptors.length)
-      throw new InternalServerErrorException('Encrypter error: Encryptors must have different names');
+      throw new InternalServerErrorException(
+        "Encrypter error: Encryptors must have different names",
+      );
 
-    this.encryptors = new Map(initEncryptors.map(encrypter => [encrypter.name, encrypter]));
-    this.currentEncrypter = [...this.encryptors.values()].reduce((acc, level) =>
-      level.securityLevel > acc.securityLevel ? level : acc,
+    this.encryptors = new Map(
+      initEncryptors.map((encrypter) => [encrypter.name, encrypter]),
+    );
+    this.currentEncrypter = [...this.encryptors.values()].reduce(
+      (acc, level) => (level.securityLevel > acc.securityLevel ? level : acc),
     );
   }
 
@@ -37,17 +45,22 @@ export class EncryptionService {
   }
 
   async compare(password: string, hash: string): Promise<PasswordStatus> {
-    const separator = hash.indexOf('}');
+    const separator = hash.indexOf("}");
 
-    if (hash.at(0) !== '{' || separator === -1)
-      throw new InternalServerErrorException('Encrypter error: Hash syntax error');
+    if (hash.at(0) !== "{" || separator === -1)
+      throw new InternalServerErrorException(
+        "Encrypter error: Hash syntax error",
+      );
 
     const encryption = hash.substring(1, separator);
     hash = hash.substring(separator + 1);
 
     const encrypter = this.encryptors.get(encryption);
 
-    if (!encrypter) throw new InternalServerErrorException('Encrypter error: Bad encrypter name');
+    if (!encrypter)
+      throw new InternalServerErrorException(
+        "Encrypter error: Bad encrypter name",
+      );
 
     return {
       isPasswordCorrect: await encrypter.compare(password, hash),

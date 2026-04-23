@@ -1,12 +1,19 @@
-import { ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { Reflector } from '@nestjs/core';
-import { UserRoleEnum, UserRoleEnumType } from '../../users/_utils/user-role.enum';
-import {  GetUserType } from '../../users/users.entity';
-import { ROLES_KEY } from '../_utils/decorator/protect.decorator';
+import {
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from "@nestjs/common";
+import { AuthGuard } from "@nestjs/passport";
+import { Reflector } from "@nestjs/core";
+import {
+  UserRoleEnum,
+  UserRoleEnumType,
+} from "../../users/_utils/user-role.enum";
+import { GetUserType } from "../../users/users.entity";
+import { ROLES_KEY } from "../_utils/decorator/protect.decorator";
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {
+export class JwtAuthGuard extends AuthGuard("jwt") {
   constructor(private reflector: Reflector) {
     super();
   }
@@ -15,7 +22,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     const isActivated = await super.canActivate(context);
     if (!isActivated) return false;
 
-    const roles = this.reflector.get<UserRoleEnumType[]>(ROLES_KEY, context.getHandler());
+    const roles = this.reflector.get<UserRoleEnumType[]>(
+      ROLES_KEY,
+      context.getHandler(),
+    );
     if (!roles || !roles.length) return true;
 
     const request = context.switchToHttp().getRequest();
@@ -26,7 +36,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
-    if (info && info.message === 'jwt expired') throw new ForbiddenException('TOKEN_EXPIRED');
+    if (info && info.message === "jwt expired")
+      throw new ForbiddenException("TOKEN_EXPIRED");
     return super.handleRequest(err, user, info, context);
   }
 }
