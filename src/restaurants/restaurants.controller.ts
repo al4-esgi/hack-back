@@ -6,10 +6,8 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { AutocompleteQueryDto, CityAutocompleteQueryDto } from './_utils/dto/request/autocomplete.query.dto';
-import { SearchRestaurantsQueryDto } from './_utils/dto/request/search-restaurants.query.dto';
-import { AutocompleteOptionDto } from './_utils/dto/response/autocomplete-option.dto';
-import { GetRestaurantsPaginatedDto } from './_utils/dto/response/get-restaurants-paginated.dto';
+import { AutocompleteQueryDto } from 'src/_utils/dto/requests/autocomplete-query.dto';
+import { AutocompleteOptionDto } from 'src/_utils/dto/responses/autocomplete-option.dto';
 import { RestaurantDetailsDto } from './_utils/dto/response/restaurant-details.dto';
 import { RestaurantsService } from './restaurants.service';
 
@@ -17,27 +15,6 @@ import { RestaurantsService } from './restaurants.service';
 @Controller('restaurants')
 export class RestaurantsController {
   constructor(private readonly restaurantsService: RestaurantsService) {}
-
-  @Get()
-  @ApiOperation({ summary: 'Search restaurants with advanced filters.' })
-  @ApiOkResponse({ type: GetRestaurantsPaginatedDto })
-  searchRestaurants(@Query() query: SearchRestaurantsQueryDto): Promise<GetRestaurantsPaginatedDto> {
-    return this.restaurantsService.searchRestaurants(query);
-  }
-
-  @Get('filters/countries')
-  @ApiOperation({ summary: 'Countries for autocomplete (optional `q` substring filter).' })
-  @ApiOkResponse({ type: [AutocompleteOptionDto] })
-  autocompleteCountries(@Query() query: AutocompleteQueryDto): Promise<AutocompleteOptionDto[]> {
-    return this.restaurantsService.autocompleteCountries(query.q, query.limit);
-  }
-
-  @Get('filters/cities')
-  @ApiOperation({ summary: 'Cities for autocomplete (optional `q`, optional `countryId`).' })
-  @ApiOkResponse({ type: [AutocompleteOptionDto] })
-  autocompleteCities(@Query() query: CityAutocompleteQueryDto): Promise<AutocompleteOptionDto[]> {
-    return this.restaurantsService.autocompleteCities(query.q, query.limit, query.countryId);
-  }
 
   @Get('filters/cuisines')
   @ApiOperation({ summary: 'Cuisines for autocomplete (optional `q` substring filter).' })
