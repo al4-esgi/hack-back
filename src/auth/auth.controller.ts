@@ -32,17 +32,9 @@ export class AuthController {
 
     const jwt = this.authService.generateJwt(user);
     const frontUrl = this.configService.get("FRONT_URL");
-    const mobileOauthRedirectUrl = this.configService.get("MOBILE_REDIRECT_URI");
-
-    if (platform === "MOBILE") {
-      res.redirect(
-        `${mobileOauthRedirectUrl}://auth/callback?token=${encodeURIComponent(jwt)}`,
-      );
-    } else {
-      res.redirect(
-        `${frontUrl}/auth/callback#token=${encodeURIComponent(jwt)}`,
-      );
-    }
+    res.redirect(
+      `${frontUrl}/auth/callback?platform=${platform}#token=${encodeURIComponent(jwt)}`,
+    );
   }
 
   @Get("callback")
